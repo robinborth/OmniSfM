@@ -1,0 +1,17 @@
+# omnidata
+numpy
+pillow
+pyyaml
+torch
+torchvision
+lightning
+einops
+matplotlib
+joblib
+pandas
+h5py
+scipy
+seaborn
+kornia
+timm
+# sfm
