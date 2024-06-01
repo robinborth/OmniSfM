@@ -3,10 +3,10 @@
     "editor.formatOnSave": true,
     "[python]": {
         "editor.codeActionsOnSave": {
-            "source.organizeImports": "explicit"
+            "source.organizeImports": "true"
         },
         "editor.rulers": [
-            88,
+            88
         ]
     },
     "python.testing.pytestArgs": [

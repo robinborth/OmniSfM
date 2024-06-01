@@ -1,0 +1,51 @@
+[build-system]
+requires = ["flit_core >=3.7,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "src"
+version = "0.0.1"
+description = "The SfM project for 3DSMC."
+authors = [{email = "robin.borth@tum.de"},{name = "Robin Borth"}]
+readme = "README.md"
+
+dependencies = [
+  # dev
+  "timm",
+  "torch",
+  "torchvision",
+  "lightning",
+  "jupyter",
+
+  # test
+  "black",
+  "flake8",
+  "mypy",
+  "isort",
+  "pytest",
+]
+
+requires-python = ">=3.10"
+license = {file = "LICENSE.txt"}
+
+[tool.isort]
+profile = "black"
+
+[tool.black]
+line-length = 88
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.tox
+  | venv
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+ignore_missing_imports = true
