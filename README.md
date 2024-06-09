@@ -77,3 +77,13 @@ cmake --build . --target install
 ## Open3D
 
 We use the version open3d-0.18.0 please clone the repo and build it in your libs folder.
+
+
+# TODOS
+- Preprocess Images From iPhone, e.g. HEIC format, extract intrinsics.
+- Visualizer for the PointCloud 
+- Corresponding matching visualization
+- Dense PointCloud -> Mesh 
+- Approximate nearest neighbour serach, with FLANN?
+- NERF-Datset with GT reconstructions, preperation for abblations.
+

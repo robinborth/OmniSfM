@@ -1,6 +1,7 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
+#include "src/settings.h"
 #include "src/Eigen.h"
 #include "src/ImageStorage.h"
 #include "src/SfMOptimizer.h"
@@ -9,16 +10,27 @@
 
 int main()
 {
-    std::string dataDir = "/Users/robinborth/Code/OmniSfM/data/rgbd_dataset_freiburg1_xyz/";
+    std::cout << "==> Load settings ..." << std::endl;
+    Settings settings;
+
     std::cout << "==> Creating image store ..." << std::endl;
-    ImageStorage imageStorage(dataDir);
+    ImageStorage imageStorage(settings.dataDir);
+
     std::cout << "==> Load images ..." << std::endl;
     imageStorage.loadImages();
+
     std::cout << "==> Detect keypoints ..." << std::endl;
     imageStorage.detectKeypoints();
-    imageStorage.drawKeypoints(0, "keypoints.jpg");
+    imageStorage.drawKeypoints(0, "keypoints00.jpg");
+    imageStorage.drawKeypoints(1, "keypoints01.jpg");
 
-    std::cout << "(TODO) ==> Find correspondences ..." << std::endl;
+    std::cout << "==> Build feature index ..." << std::endl;
+    NearestNeighborSearch<128> nnSearch = NearestNeighborSearch<128>();
+    nnSearch.setThreshold(settings.siftThreshold);
+    nnSearch.buildIndex(*imageStorage.findImage(0));
+    std::cout << "==> Find correspondences ..." << std::endl;
+    std::vector<Match> matches = nnSearch.queryMatches(*imageStorage.findImage(1));
+    std::cout << "==> Found " << matches.size() << " matches ..." << std::endl;
 
     std::cout << "(TODO) ==> Optimize SfM ..." << std::endl;
 
@@ -27,22 +39,6 @@ int main()
     std::cout << "(TODO) ==> Create mesh ..." << std::endl;
 
     std::cout << "(TODO) ==> Save mesh ..." << std::endl;
-
-    // checks that the ann search works
-    std::vector<Vector3f> source_points;
-    source_points.push_back(Vector3f{0.0f, 0.0f, 0.0f});
-    source_points.push_back(Vector3f{1.0f, 0.0f, 0.0f});
-    source_points.push_back(Vector3f{0.0f, 0.0f, 2.0f});
-
-    std::vector<Vector3f> target_points;
-    target_points.push_back(Vector3f{0.1f, 0.1f, 0.1f});
-    target_points.push_back(Vector3f{2.1f, -0.1f, 0.1f});
-
-    std::unique_ptr<NearestNeighborSearch<3>> nnSearch = std::make_unique<NearestNeighborSearch<3>>();
-    nnSearch->setThreshold(0.9f);
-    nnSearch->buildIndex(target_points);
-    std::vector<Match> matches = nnSearch->queryMatches(source_points);
-    std::cout << "nMatches: " << matches.size() << std::endl;
 
     return 0;
 }

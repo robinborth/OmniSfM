@@ -61,6 +61,16 @@ public:
 
     std::vector<Image> images;
 
+    Image *findImage(u_int16_t id)
+    {
+        auto it = std::find_if(images.begin(), images.end(), [id](Image &a)
+                               { return a.id == id; });
+
+        if (it != images.end())
+            return &(*it);
+        return nullptr;
+    }
+
 private:
     bool readFileList(const std::string &type, std::vector<std::string> &filenames, std::vector<uint16_t> &ids)
     {
@@ -139,16 +149,6 @@ private:
             }
         }
         return true;
-    }
-
-    Image *findImage(u_int16_t id)
-    {
-        auto it = std::find_if(images.begin(), images.end(), [id](Image &a)
-                               { return a.id == id; });
-
-        if (it != images.end())
-            return &(*it);
-        return nullptr;
     }
 
     std::string datasetDir;
