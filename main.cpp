@@ -1,5 +1,4 @@
 #include <iostream>
-#include <opencv2/opencv.hpp>
 
 #include "src/settings.h"
 #include "src/Eigen.h"
@@ -7,6 +6,7 @@
 #include "src/SfMOptimizer.h"
 #include "src/PointCloud.h"
 #include "src/NearestNeighbor.h"
+#include "src/Utils.h"
 
 int main()
 {
@@ -27,10 +27,14 @@ int main()
     std::cout << "==> Build feature index ..." << std::endl;
     NearestNeighborSearch<128> nnSearch = NearestNeighborSearch<128>();
     nnSearch.setThreshold(settings.siftThreshold);
-    nnSearch.buildIndex(*imageStorage.findImage(0));
+    nnSearch.buildIndex(imageStorage.images[1]);
     std::cout << "==> Find correspondences ..." << std::endl;
-    std::vector<Match> matches = nnSearch.queryMatches(*imageStorage.findImage(1));
+    std::vector<Match> matches = nnSearch.queryMatches(imageStorage.images[0]);
     std::cout << "==> Found " << matches.size() << " matches ..." << std::endl;
+
+    std::cout << "==> Visualize correspondences ..." << std::endl;
+    cv::Mat correspondenceImage = visualizeCorrespondences(imageStorage.images[0], imageStorage.images[1], matches);
+    cv::imwrite("correspondenceImage.jpg", correspondenceImage);
 
     std::cout << "(TODO) ==> Optimize SfM ..." << std::endl;
 
