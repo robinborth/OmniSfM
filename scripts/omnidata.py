@@ -98,6 +98,7 @@ if __name__ == "__main__":
         img_tensor = load_image(rgb_input, task=task)
         output = model(img_tensor).clamp(min=0, max=1)
         output_path = Path(data_dir, task, rgb_input.name)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
         if task == "depth":
             output = output.squeeze(0).clamp(0, 1)
             output = 1 - output
