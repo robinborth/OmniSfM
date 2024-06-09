@@ -44,6 +44,7 @@ python scripts/omnidata.py --data="rgbd_dataset_freiburg1_xyz" --task="depth"
 # Data Structure
 The data structure should look like that, note that in order to do inference for the omnidata model or the keypoint detection skript we need to have the images in the `/rgb` folder.
 
+```bash
 data
 └── rgbd_dataset_freiburg1_xyz
     ├── depth
@@ -58,3 +59,4 @@ data
         ├── 00000.png
         ├── 00001.png
         └── 00002.png
+```

@@ -166,7 +166,7 @@ public:
                 m_normals.push_back(p);
             }
 
-            delete ps;
+            delete[] ps;
         }
         else
         {
@@ -188,7 +188,7 @@ public:
                 m_normals.push_back(p);
             }
 
-            delete ps;
+            delete[] ps;
         }
 
         // std::ofstream file("pointcloud.off");
