@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.6)
 
 project(sfm)
 
+add_definitions(-w)
+
 # options
 set(LIBRARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs CACHE PATH "Path to lib folder")
 set(Eigen3_DIR ${LIBRARY_DIR}/Eigen/share/eigen3/cmake CACHE PATH "Path to installed Eigen")
@@ -21,7 +23,9 @@ link_directories(${FREE_IMAGE_DIR}/lib/)
 
 # Set C++ flags
 # todo make opencv 14
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 # find the packages 
 find_package(OpenCV REQUIRED)
@@ -36,6 +40,6 @@ add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE")
 add_executable(sfm main.cpp)
 target_link_libraries(sfm ceres Eigen3::Eigen ${OpenCV_LIBS})
 target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/src)
-# target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${Flann_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src)
 # target_link_libraries(sfm ceres Eigen3::Eigen)
 # target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${Flann_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/src)

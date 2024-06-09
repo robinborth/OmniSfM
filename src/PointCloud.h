@@ -1,42 +1,16 @@
 #pragma once
-#include "SimpleMesh.h"
+
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+
 #include "Eigen.h"
 
 class PointCloud
 {
 public:
     PointCloud() {}
-
-    PointCloud(const SimpleMesh &mesh)
-    {
-        const auto &vertices = mesh.getVertices();
-        const auto &triangles = mesh.getTriangles();
-        const unsigned nVertices = vertices.size();
-        const unsigned nTriangles = triangles.size();
-
-        // Copy vertices.
-        m_points.reserve(nVertices);
-        for (const auto &vertex : vertices)
-        {
-            m_points.push_back(Vector3f{vertex.position.x(), vertex.position.y(), vertex.position.z()});
-        }
-
-        // Compute normals (as an average of triangle normals).
-        m_normals = std::vector<Vector3f>(nVertices, Vector3f::Zero());
-        for (size_t i = 0; i < nTriangles; i++)
-        {
-            const auto &triangle = triangles[i];
-            Vector3f faceNormal = (m_points[triangle.idx1] - m_points[triangle.idx0]).cross(m_points[triangle.idx2] - m_points[triangle.idx0]);
-
-            m_normals[triangle.idx0] += faceNormal;
-            m_normals[triangle.idx1] += faceNormal;
-            m_normals[triangle.idx2] += faceNormal;
-        }
-        for (size_t i = 0; i < nVertices; i++)
-        {
-            m_normals[i].normalize();
-        }
-    }
 
     PointCloud(float *depthMap, const Matrix3f &depthIntrinsics, const Matrix4f &depthExtrinsics, const unsigned width, const unsigned height, unsigned downsampleFactor = 1, float maxDistance = 0.1f)
     {

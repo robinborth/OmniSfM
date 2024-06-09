@@ -60,3 +60,20 @@ data
         ├── 00001.png
         └── 00002.png
 ```
+
+
+## OpenCV
+
+We use the version opencv-4.9.0 please clone the repo and build it in your libs folder.
+We need to make sure that the cpp version is 14, hence do the following:
+
+
+```bash
+mkdir build && cd build 
+cmake .. -DCMAKE_CXX_STANDARD=14 -DCMAKE_INSTALL_PREFIX=/Users/robinborth/Code/OmniSfM/libs/opencv
+cmake --build . --target install
+```
+
+## Open3D
+
+We use the version open3d-0.18.0 please clone the repo and build it in your libs folder.

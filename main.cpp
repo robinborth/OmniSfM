@@ -1,56 +1,48 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 
-#include "src/SfMOptimizer.h"
 #include "src/Eigen.h"
-#include "src/VirtualSensor.h"
-#include "src/SimpleMesh.h"
+#include "src/ImageStorage.h"
+#include "src/SfMOptimizer.h"
 #include "src/PointCloud.h"
-// #include "src/NearestNeighbor.h"
+#include "src/NearestNeighbor.h"
 
 int main()
 {
-    std::cout << "Running SfM pipeline" << std::endl;
+    std::string dataDir = "/Users/robinborth/Code/OmniSfM/data/rgbd_dataset_freiburg1_xyz/";
+    std::cout << "==> Creating image store ..." << std::endl;
+    ImageStorage imageStorage(dataDir);
+    std::cout << "==> Load images ..." << std::endl;
+    imageStorage.loadImages();
+    std::cout << "==> Detect keypoints ..." << std::endl;
+    imageStorage.detectKeypoints();
+    imageStorage.drawKeypoints(0, "keypoints.jpg");
 
-    // // Read the image
-    std::string imagePath = "/Users/robinborth/Code/OmniSfM/data/rgbd_dataset_freiburg1_xyz/rgb/00000.png";
-    cv::Mat image = cv::imread(imagePath, cv::IMREAD_COLOR);
+    std::cout << "(TODO) ==> Find correspondences ..." << std::endl;
 
-    // Check if the image is loaded properly
-    if (image.empty())
-    {
-        std::cerr << "Could not open or find the image!" << std::endl;
-        return -1;
-    }
+    std::cout << "(TODO) ==> Optimize SfM ..." << std::endl;
 
-    // Detect keypoints using SIFT
-    cv::Ptr<cv::SIFT> sift = cv::SIFT::create();
-    std::vector<cv::KeyPoint> keypoints;
-    cv::Mat descriptors;
-    sift->detectAndCompute(image, cv::noArray(), keypoints, descriptors);
+    std::cout << "(TODO) ==> Create dense point cloud ..." << std::endl;
 
-    // Draw the keypoints on the image
-    cv::Mat img_keypoints;
-    cv::drawKeypoints(image, keypoints, img_keypoints);
+    std::cout << "(TODO) ==> Create mesh ..." << std::endl;
 
-    // Save the result
-    cv::imwrite("sift_keypoints.jpg", img_keypoints);
+    std::cout << "(TODO) ==> Save mesh ..." << std::endl;
 
-    // // checks that the ann search works
-    // std::vector<Vector3f> source_points;
-    // source_points.push_back(Vector3f{0.0f, 0.0f, 0.0f});
-    // source_points.push_back(Vector3f{1.0f, 0.0f, 0.0f});
-    // source_points.push_back(Vector3f{0.0f, 0.0f, 2.0f});
+    // checks that the ann search works
+    std::vector<Vector3f> source_points;
+    source_points.push_back(Vector3f{0.0f, 0.0f, 0.0f});
+    source_points.push_back(Vector3f{1.0f, 0.0f, 0.0f});
+    source_points.push_back(Vector3f{0.0f, 0.0f, 2.0f});
 
-    // std::vector<Vector3f> target_points;
-    // target_points.push_back(Vector3f{0.1f, 0.1f, 0.1f});
-    // target_points.push_back(Vector3f{2.1f, -0.1f, 0.1f});
+    std::vector<Vector3f> target_points;
+    target_points.push_back(Vector3f{0.1f, 0.1f, 0.1f});
+    target_points.push_back(Vector3f{2.1f, -0.1f, 0.1f});
 
-    // // Search for matches using FLANN.
-    // std::unique_ptr<NearestNeighborSearch> nearestNeighborSearch = std::make_unique<NearestNeighborSearchFlann>();
-    // nearestNeighborSearch->setMatchingMaxDistance(0.0001f);
-    // nearestNeighborSearch->buildIndex(target_points);
-    // auto matches = nearestNeighborSearch->queryMatches(source_points);
+    std::unique_ptr<NearestNeighborSearch<3>> nnSearch = std::make_unique<NearestNeighborSearch<3>>();
+    nnSearch->setThreshold(0.9f);
+    nnSearch->buildIndex(target_points);
+    std::vector<Match> matches = nnSearch->queryMatches(source_points);
+    std::cout << "nMatches: " << matches.size() << std::endl;
 
     return 0;
 }
