@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "src/settings.h"
+#include "src/Settings.h"
 #include "src/Eigen.h"
 #include "src/ImageStorage.h"
 #include "src/SfMOptimizer.h"
