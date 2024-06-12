@@ -96,12 +96,14 @@ if __name__ == "__main__":
     paths = list(Path(data_dir, "rgb").iterdir())
     for rgb_input in tqdm(paths):
         img_tensor = load_image(rgb_input, task=task)
-        output = model(img_tensor).clamp(min=0, max=1)
+        output = model(img_tensor).squeeze(0)
         output_path = Path(data_dir, task, rgb_input.name)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if task == "depth":
-            output = output.squeeze(0).clamp(0, 1)
+            output = output.clamp(0, 1)
             output = 1 - output
             plt.imsave(output_path, output.detach().cpu().squeeze(), cmap="viridis")
+            # v2.functional.to_pil_image(output).save(output_path)
         else:
-            v2.functional.to_pil_image(output[0]).save(output_path)
+            output = output.clamp(0, 1)
+            v2.functional.to_pil_image(output).save(output_path)

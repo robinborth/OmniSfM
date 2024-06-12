@@ -2,7 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 #include "ImageStorage.h"
-#include "NearestNeighbor.h"
+#include "CorrespondenceSearch.h"
 
 cv::Mat visualizeCorrespondences(Image source, Image target, std::vector<Match> matches)
 {
@@ -16,11 +16,11 @@ cv::Mat visualizeCorrespondences(Image source, Image target, std::vector<Match> 
     for (auto &match : matches)
     {
         // source pixel coordinates
-        int xs = source.keypoints[match.sourceId].pt.x;
-        int ys = source.keypoints[match.sourceId].pt.y;
+        int xs = source.keypoints[match.sourceKeypointId].pt.x;
+        int ys = source.keypoints[match.sourceKeypointId].pt.y;
         // target pixel coordinates
-        int xt = target.keypoints[match.targetId].pt.x + source.rgb.cols;
-        int yt = target.keypoints[match.targetId].pt.y;
+        int xt = target.keypoints[match.targetKeyopintId].pt.x + source.rgb.cols;
+        int yt = target.keypoints[match.targetKeyopintId].pt.y;
 
         // Define the start and end points of the line
         cv::Point startPoint(xs, ys);

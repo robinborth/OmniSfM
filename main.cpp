@@ -5,7 +5,7 @@
 #include "src/ImageStorage.h"
 #include "src/SfMOptimizer.h"
 #include "src/PointCloud.h"
-#include "src/NearestNeighbor.h"
+#include "src/CorrespondenceSearch.h"
 #include "src/Utils.h"
 
 int main()
@@ -24,16 +24,16 @@ int main()
     imageStorage.drawKeypoints(0, "keypoints00.jpg");
     imageStorage.drawKeypoints(1, "keypoints01.jpg");
 
-    std::cout << "==> Build feature index ..." << std::endl;
-    NearestNeighborSearch<128> nnSearch = NearestNeighborSearch<128>();
-    nnSearch.setThreshold(settings.siftThreshold);
-    nnSearch.buildIndex(imageStorage.images[1]);
     std::cout << "==> Find correspondences ..." << std::endl;
-    std::vector<Match> matches = nnSearch.queryMatches(imageStorage.images[0]);
+    auto &sImg = imageStorage.images[0];
+    auto &tImg = imageStorage.images[1];
+    CorrespondenceSearch<128> search = CorrespondenceSearch<128>();
+    search.setThreshold(settings.siftThreshold);
+    std::vector<Match> matches = search.queryMatches(sImg, tImg);
     std::cout << "==> Found " << matches.size() << " matches ..." << std::endl;
 
     std::cout << "==> Visualize correspondences ..." << std::endl;
-    cv::Mat correspondenceImage = visualizeCorrespondences(imageStorage.images[0], imageStorage.images[1], matches);
+    cv::Mat correspondenceImage = visualizeCorrespondences(sImg, tImg, matches);
     cv::imwrite("correspondenceImage.jpg", correspondenceImage);
 
     std::cout << "(TODO) ==> Optimize SfM ..." << std::endl;
