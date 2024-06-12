@@ -6,11 +6,11 @@ add_definitions(-w)
 
 # options
 set(LIBRARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs CACHE PATH "Path to lib folder")
-set(Eigen3_DIR ${LIBRARY_DIR}/Eigen/share/eigen3/cmake CACHE PATH "Path to installed Eigen")
-set(glog_DIR ${LIBRARY_DIR}/glog-lib/lib/cmake/glog CACHE PATH "Path to installed glog")
-set(Ceres_DIR ${LIBRARY_DIR}/Ceres/lib/cmake/Ceres CACHE PATH "Path to installed Ceres")
-# set(Flann_INCLUDE_DIR ${LIBRARY_DIR}/Flann/include CACHE PATH "Path to Flann source folder")
-set(OpenCV_DIR ${LIBRARY_DIR}/opencv/lib/cmake/opencv4 CACHE PATH "Path to OpenCV source folder")
+set(Eigen3_DIR ${LIBRARY_DIR}/eigen-3.4.0/cmake CACHE PATH "Path to installed Eigen")
+set(glog_DIR ${LIBRARY_DIR}/glog/cmake CACHE PATH "Path to installed glog")
+set(Ceres_DIR ${LIBRARY_DIR}/ceres-solver/cmake CACHE PATH "Path to installed Ceres")
+set(Flann_INCLUDE_DIR ${LIBRARY_DIR}/flann/cmake CACHE PATH "Path to Flann source folder")
+set(OpenCV_DIR ${LIBRARY_DIR}/opencv/cmake/ CACHE PATH "Path to OpenCV source folder")
 
 # freeimage mac m1 setup
 set(FREE_IMAGE_DIR /opt/homebrew/Cellar/freeimage/3.18.0)  
@@ -32,6 +32,7 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(glog REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(Flann REQUIRED)
 get_target_property(GLOG_DLL_PATH_DEBUG glog::glog IMPORTED_LOCATION_DEBUG)
 get_target_property(GLOG_DLL_PATH_RELEASE glog::glog IMPORTED_LOCATION_RELEASE)
 

@@ -2,6 +2,6 @@
 
 struct Settings
 {
-    std::string dataDir = "/Users/robinborth/Code/OmniSfM/data/rgbd_dataset_freiburg1_xyz/";
+    std::string dataDir = "EDIT ME!";
     float siftThreshold = 0.98f;
 };

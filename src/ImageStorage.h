@@ -31,8 +31,8 @@ public:
             return;
         if (!readFileList("depth", filenameDepthImages, idDepthImages) || !loadImages("depth", filenameDepthImages, idDepthImages))
             return;
-        if (!readFileList("normal", filenameNormalImages, idNormalImages) || !loadImages("normal", filenameNormalImages, idNormalImages))
-            return;
+        // if (!readFileList("normal", filenameNormalImages, idNormalImages) || !loadImages("normal", filenameNormalImages, idNormalImages))
+        //     return;
     }
 
     void detectKeypoints()
@@ -76,28 +76,39 @@ private:
     {
         std::string filePath = datasetDir + type + ".txt";
         std::ifstream fileDepthList(filePath, std::ios::in);
+        std::cout << "Reading file " << filePath << std::endl;
         if (!fileDepthList.is_open())
         {
             std::cerr << "Error: Could not open the file " << filePath << std::endl;
             return false;
         }
-        // skip the header
+
+        // Skip the header
         filenames.clear();
         ids.clear();
-        std::string dump;
-        std::getline(fileDepthList, dump);
-        while (fileDepthList.good())
+        std::string line;
+        while (std::getline(fileDepthList, line))
         {
-            uint16_t id;
-            fileDepthList >> id;
-            std::string filename;
-            fileDepthList >> filename;
-            if (filename == "")
-                break;
+            // Skip comments
+            if (line.empty() || line[0] == '#')
+                continue;
+
+            std::istringstream iss(line);
+            std::string id_str, filename;
+            if (!(iss >> id_str >> filename))
+            {
+                std::cerr << "Error parsing line: " << line << std::endl;
+                continue;
+            }
+            uint16_t id = static_cast<uint16_t>(std::stoi(id_str));
             filenames.push_back(datasetDir + filename);
             ids.push_back(id);
+            std::cout << "Read id: " << id << ", filename: " << filename << std::endl;
         }
+
         fileDepthList.close();
+        std::cout << "Read " << filenames.size() << " files" << std::endl;
+        std::cout << "Read " << ids.size() << " ids" << std::endl;
         return true;
     }
 
@@ -115,6 +126,8 @@ private:
     {
         for (size_t i = 0; i < filenames.size(); ++i)
         {
+            std::cout << "Loading image " << filenames[i] << std::endl;
+            std::cout << "Image id " << ids[i] << std::endl;
             uint16_t id = ids[i];
             Image *img = findImage(id);
 
@@ -132,13 +145,13 @@ private:
                 if (!checkLoadImage(rgbImage))
                     return false;
             }
-            if (type == "normal")
-            {
-                cv::Mat normalImage = cv::imread(filenames[i], cv::IMREAD_COLOR);
-                img->normal = normalImage;
-                if (!checkLoadImage(normalImage))
-                    return false;
-            }
+            // if (type == "normal")
+            // {
+            //     cv::Mat normalImage = cv::imread(filenames[i], cv::IMREAD_COLOR);
+            //     img->normal = normalImage;
+            //     if (!checkLoadImage(normalImage))
+            //         return false;
+            // }
             if (type == "depth")
             {
                 // TODO the depth should only store a single value per channel
