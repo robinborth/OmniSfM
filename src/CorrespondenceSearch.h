@@ -1,10 +1,13 @@
 #pragma once
+
 #include "Eigen.h"
 
 struct Match
 {
-	int sourceId;
-	int targetId;
+	int sourceImageId;
+	int targetImageId;
+	int sourceKeypointId;
+	int targetKeyopintId;
 	float weight;
 };
 
@@ -12,51 +15,56 @@ template <int FeatureSize>
 using Feature = Eigen::Matrix<float, FeatureSize, 1>;
 
 template <int FeatureSize>
-class NearestNeighborSearch
+class CorrespondenceSearch
 {
 	using FeatureT = Feature<FeatureSize>;
 
 public:
-	NearestNeighborSearch() : threshold{0.9f} {}
-
-	void buildIndex(const std::vector<FeatureT> &targetPoints)
-	{
-		points = targetPoints;
-	}
-
-	void buildIndex(const Image &targetImage)
-	{
-		points = matToVector(targetImage.descriptors);
-	}
+	CorrespondenceSearch() : threshold{0.9f} {}
 
 	void setThreshold(float threshold)
 	{
 		this->threshold = threshold;
 	}
 
-	std::vector<Match> queryMatches(const std::vector<FeatureT> &sourcePoints)
+	std::vector<Match> queryMatches(const Image &sourceImage, const Image &targetImage)
 	{
+		// build the index to query from, this is the points state of the class
+		buildIndex(targetImage);
+
+		// prepare the source points from the source image
+		auto sourcePoints = matToVector(sourceImage.descriptors);
+
+		// fine the matches and return them
 		std::vector<Match> matches;
 		for (size_t i = 0; i < sourcePoints.size(); ++i)
 		{
 			Match match = getClosestPoint(sourcePoints[i]);
-			if (match.targetId != -1)
+			if (match.targetKeyopintId != -1)
 			{
-				match.sourceId = i;
+				match.sourceKeypointId = i;
+				match.targetImageId = targetImage.id;
+				match.sourceImageId = sourceImage.id;
 				matches.push_back(match);
 			}
 		}
 		return matches;
 	}
 
-	std::vector<Match> queryMatches(const Image &sourceImage)
+	std::vector<Match> queryCorrespondences(std::vector<Image> images)
 	{
-		return queryMatches(matToVector(sourceImage.descriptors));
+		// TODO implement correspondences
+		return {};
 	}
 
 private:
 	std::vector<FeatureT> points;
 	float threshold;
+
+	void buildIndex(const Image &targetImage)
+	{
+		points = matToVector(targetImage.descriptors);
+	}
 
 	Match getClosestPoint(const FeatureT &p)
 	{
@@ -75,7 +83,7 @@ private:
 		}
 		// build the match for the target, missing source id
 		Match match;
-		match.targetId = idx;
+		match.targetKeyopintId = idx;
 		match.weight = maxSimilarity;
 		if (idx == -1)
 			match.weight = 0;

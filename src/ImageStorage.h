@@ -9,7 +9,7 @@
 
 struct Image
 {
-    uint16_t id;
+    int id;
     cv::Mat rgb;
     cv::Mat normal;
     cv::Mat depth;
@@ -154,8 +154,7 @@ private:
             // }
             if (type == "depth")
             {
-                // TODO the depth should only store a single value per channel
-                cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_COLOR);
+                cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
                 img->depth = depthImage;
                 if (!checkLoadImage(depthImage))
                     return false;
