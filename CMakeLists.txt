@@ -40,7 +40,6 @@ add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE")
 
 add_executable(sfm main.cpp)
 target_link_libraries(sfm ceres Eigen3::Eigen ${OpenCV_LIBS})
-target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src)
 # target_link_libraries(sfm ceres Eigen3::Eigen)
 # target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${Flann_INCLUDE_DIR} ${CMAKE_SOURCE_DIR}/src)

@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include "ImageStorage.h"
 #include "CorrespondenceSearch.h"
+#include "VirtualSensor.h"
 
 cv::Mat visualizeCorrespondences(Image source, Image target, std::vector<Match> matches)
 {
@@ -34,4 +35,40 @@ cv::Mat visualizeCorrespondences(Image source, Image target, std::vector<Match> 
     }
 
     return combinedImage;
+}
+
+cv::Mat getIntrinsicsFromSensor(VirtualSensor& sensor)
+{
+    // Get the intrinsics from the sensor
+    Matrix3f depthIntrinsics = sensor.GetDepthIntrinsics();
+
+    // Extract the intrinsic parameters
+    float fX = depthIntrinsics(0, 0);
+    float fY = depthIntrinsics(1, 1);
+    float cX = depthIntrinsics(0, 2);
+    float cY = depthIntrinsics(1, 2);
+
+    // Construct the K matrix
+    cv::Mat K = (cv::Mat_<double>(3, 3) << fX, 0, cX,
+                                           0, fY, cY,
+                                           0, 0, 1);
+
+    return K;
+}
+
+void savePointsToFile(const std::vector<cv::Point3f>& points3D, const std::string& filename)
+{
+    std::ofstream outFile(filename);
+    if (!outFile)
+    {
+        std::cerr << "Error: Could not open file for writing." << std::endl;
+        return;
+    }
+
+    for (const auto& point : points3D)
+    {
+        outFile << point.x << " " << point.y << " " << point.z << std::endl;
+    }
+
+    outFile.close();
 }

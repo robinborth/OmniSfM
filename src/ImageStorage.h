@@ -9,7 +9,7 @@
 
 struct Image
 {
-    int id;
+    int64_t id;
     cv::Mat rgb;
     cv::Mat normal;
     cv::Mat depth;
@@ -25,12 +25,15 @@ public:
         this->sift = cv::SIFT::create();
     };
 
+    std::vector<Image> images;
+
     void loadImages()
     {
         if (!readFileList("rgb", filenameRGBImages, idRGBImages) || !loadImages("rgb", filenameRGBImages, idRGBImages))
             return;
-        if (!readFileList("depth", filenameDepthImages, idDepthImages) || !loadImages("depth", filenameDepthImages, idDepthImages))
-            return;
+        // TODO: Figure out how to load depth images because of th id problem
+        // if (!readFileList("depth", filenameDepthImages, idDepthImages) || !loadImages("depth", filenameDepthImages, idDepthImages))
+        //     return;
         // if (!readFileList("normal", filenameNormalImages, idNormalImages) || !loadImages("normal", filenameNormalImages, idNormalImages))
         //     return;
     }
@@ -43,7 +46,7 @@ public:
         }
     }
 
-    void drawKeypoints(u_int16_t id, std::string outputPath)
+    void drawKeypoints(int64_t id, std::string outputPath)
     {
         // Find image with the id
         Image *image = findImage(id);
@@ -59,9 +62,8 @@ public:
         cv::imwrite(outputPath, img_keypoints);
     }
 
-    std::vector<Image> images;
 
-    Image *findImage(u_int16_t id)
+    Image *findImage(int64_t id)
     {
         auto it = std::find_if(images.begin(), images.end(), [id](Image &a)
                                { return a.id == id; });
@@ -72,18 +74,16 @@ public:
     }
 
 private:
-    bool readFileList(const std::string &type, std::vector<std::string> &filenames, std::vector<uint16_t> &ids)
+    bool readFileList(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
     {
         std::string filePath = datasetDir + type + ".txt";
         std::ifstream fileDepthList(filePath, std::ios::in);
-        std::cout << "Reading file " << filePath << std::endl;
         if (!fileDepthList.is_open())
         {
             std::cerr << "Error: Could not open the file " << filePath << std::endl;
             return false;
         }
 
-        // Skip the header
         filenames.clear();
         ids.clear();
         std::string line;
@@ -100,17 +100,24 @@ private:
                 std::cerr << "Error parsing line: " << line << std::endl;
                 continue;
             }
-            uint16_t id = static_cast<uint16_t>(std::stoi(id_str));
-            filenames.push_back(datasetDir + filename);
-            ids.push_back(id);
-            std::cout << "Read id: " << id << ", filename: " << filename << std::endl;
+            id_str.erase(std::remove(id_str.begin(), id_str.end(), '.'), id_str.end());
+            //std::cout << "ID: " << id_str << " Filename: " << filename << std::endl;
+
+            try {
+                int64_t id = std::stoull(id_str);
+                //std::cout << "ID: " << id << " Filename: " << filename << std::endl;
+                filenames.push_back(datasetDir + filename);
+                ids.push_back(id);
+            } catch (const std::exception &e) {
+                std::cerr << "Error converting ID: " << id_str << " - " << e.what() << std::endl;
+                continue;
+            }
         }
 
         fileDepthList.close();
-        std::cout << "Read " << filenames.size() << " files" << std::endl;
-        std::cout << "Read " << ids.size() << " ids" << std::endl;
         return true;
     }
+
 
     bool checkLoadImage(cv::Mat image)
     {
@@ -122,17 +129,17 @@ private:
         return true;
     }
 
-    bool loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<uint16_t> &ids)
+    bool loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
     {
-        for (size_t i = 0; i < filenames.size(); ++i)
+        for (size_t i = 0; i < filenames.size(); ++i)   // ADJUST THIS TO LOAD ONLY A FEW IMAGES
         {
-            std::cout << "Loading image " << filenames[i] << std::endl;
-            std::cout << "Image id " << ids[i] << std::endl;
-            uint16_t id = ids[i];
+            int64_t id = ids[i];
+            std::cout << "Loading image with id " << id << std::endl;
             Image *img = findImage(id);
 
             if (!img) // not found create a new image
             {
+                std::cout << "Creating new image with id " << id << std::endl;
                 images.push_back(Image{id});
                 img = &images.back();
             }
@@ -152,23 +159,24 @@ private:
             //     if (!checkLoadImage(normalImage))
             //         return false;
             // }
-            if (type == "depth")
-            {
-                cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
-                img->depth = depthImage;
-                if (!checkLoadImage(depthImage))
-                    return false;
-            }
+            // if (type == "depth")
+            // {
+            //     cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
+            //     img->depth = depthImage;
+            //     if (!checkLoadImage(depthImage))
+            //         return false;
+            // }
         }
+        std::cout << "Loaded rgb images" << images.size() << std::endl;
         return true;
     }
 
     std::string datasetDir;
     cv::Ptr<cv::SIFT> sift;
     std::vector<std::string> filenameDepthImages;
-    std::vector<uint16_t> idDepthImages;
+    std::vector<int64_t> idDepthImages;
     std::vector<std::string> filenameNormalImages;
-    std::vector<uint16_t> idNormalImages;
+    std::vector<int64_t> idNormalImages;
     std::vector<std::string> filenameRGBImages;
-    std::vector<uint16_t> idRGBImages;
+    std::vector<int64_t> idRGBImages;
 };

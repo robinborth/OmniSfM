@@ -2,108 +2,152 @@
 
 #include "Eigen.h"
 
+#include <opencv2/flann.hpp>
+#include <opencv2/highgui.hpp>
+
 struct Match
 {
-	int sourceImageId;
-	int targetImageId;
+	int64_t sourceImageId;
+	int64_t targetImageId;
 	int sourceKeypointId;
 	int targetKeyopintId;
 	float weight;
 };
 
-template <int FeatureSize>
-using Feature = Eigen::Matrix<float, FeatureSize, 1>;
-
-template <int FeatureSize>
 class CorrespondenceSearch
 {
-	using FeatureT = Feature<FeatureSize>;
-
 public:
-	CorrespondenceSearch() : threshold{0.9f} {}
+    void buildIndex(const Image& targetImage)
+    {
+        flannIndex = cv::makePtr<cv::flann::Index>(targetImage.descriptors, cv::flann::KDTreeIndexParams(5));
+        targetDescriptors = targetImage.descriptors;
+    }
 
-	void setThreshold(float threshold)
+    Match getClosestPoint(const cv::Mat& sourceDescriptor)
+    {
+        std::vector<int> indices(2); // Find the 2 nearest neighbors
+        std::vector<float> dists(2); // Their distances
+        flannIndex->knnSearch(sourceDescriptor, indices, dists, 2, cv::flann::SearchParams(8)); // Using 2 neighbors for ratio test
+
+        Match match;
+        if (dists[0] < 0.5f * dists[1]) // Lowe's ratio test with a ratio of 0.7
+        {
+            match.targetKeyopintId = indices[0];
+            match.weight = dists[0];
+        }
+        else
+        {
+            match.targetKeyopintId = -1;
+            match.weight = std::numeric_limits<float>::max();
+        }
+        return match;
+    }
+
+    std::vector<cv::Mat> matToVector(const cv::Mat& mat)
+    {
+        std::vector<cv::Mat> vec(mat.rows);
+        for (int i = 0; i < mat.rows; ++i)
+        {
+            vec[i] = mat.row(i);
+        }
+        return vec;
+    }
+
+    std::vector<Match> queryMatches(const Image& sourceImage, const Image& targetImage)
+    {
+        // Build the index for the target image
+        buildIndex(targetImage);
+
+        // Prepare the source points from the source image
+        auto sourcePoints = matToVector(sourceImage.descriptors);
+
+        // Find the matches and return them
+        std::vector<Match> matches;
+        for (size_t i = 0; i < sourcePoints.size(); ++i)
+        {
+            Match match = getClosestPoint(sourcePoints[i]);
+            if (match.targetKeyopintId != -1)
+            {
+                match.sourceKeypointId = i;
+                match.targetImageId = targetImage.id;
+                match.sourceImageId = sourceImage.id;
+                matches.push_back(match);
+            }
+        }
+        return matches;
+    }
+
+	std::vector<std::vector<Match>> queryCorrespondences(const std::vector<Image>& images)
 	{
-		this->threshold = threshold;
-	}
+		std::vector<std::vector<Match>> allMatches(images.size() - 1); // Correctly sized to store pairwise matches
 
-	std::vector<Match> queryMatches(const Image &sourceImage, const Image &targetImage)
-	{
-		// build the index to query from, this is the points state of the class
-		buildIndex(targetImage);
-
-		// prepare the source points from the source image
-		auto sourcePoints = matToVector(sourceImage.descriptors);
-
-		// fine the matches and return them
-		std::vector<Match> matches;
-		for (size_t i = 0; i < sourcePoints.size(); ++i)
+		for (size_t i = 0; i < images.size() - 1; ++i)
 		{
-			Match match = getClosestPoint(sourcePoints[i]);
-			if (match.targetKeyopintId != -1)
+			for (size_t j = i + 1; j < images.size(); ++j)
 			{
-				match.sourceKeypointId = i;
-				match.targetImageId = targetImage.id;
-				match.sourceImageId = sourceImage.id;
-				matches.push_back(match);
+				std::cout << "==> Finding correspondences between images " << i << " and " << j << " ..." << std::endl;
+				auto matches = queryMatches(images[i], images[j]);
+				auto inlierMatches = filterMatchesWithRANSAC(images[i], images[j], matches);
+
+				// Only keep pairs with at least 60 matches
+				if (inlierMatches.size() >= 60)
+				{
+					allMatches[i].insert(allMatches[i].end(), inlierMatches.begin(), inlierMatches.end());
+				}
 			}
 		}
-		return matches;
+		return allMatches;
 	}
 
-	std::vector<Match> queryCorrespondences(std::vector<Image> images)
+    std::vector<Match> filterMatchesWithRANSAC(const Image& sImg, const Image& tImg, const std::vector<Match>& matches)
+    {
+        // Convert keypoints to Point2f
+        std::vector<cv::Point2f> srcPoints;
+        std::vector<cv::Point2f> dstPoints;
+
+        for (const auto& match : matches)
+        {
+            srcPoints.push_back(sImg.keypoints[match.sourceKeypointId].pt);
+            dstPoints.push_back(tImg.keypoints[match.targetKeyopintId].pt);
+        }
+
+        // Use RANSAC to find the fundamental matrix and filter matches
+        std::vector<uchar> inliersMask(srcPoints.size());
+        cv::Mat fundamentalMatrix = cv::findFundamentalMat(srcPoints, dstPoints, inliersMask, cv::FM_RANSAC);
+
+        // Filter matches based on inliers mask
+        std::vector<Match> inlierMatches;
+        for (size_t i = 0; i < matches.size(); ++i)
+        {
+            if (inliersMask[i])
+            {
+                inlierMatches.push_back(matches[i]);
+            }
+        }
+
+        // Only keep matches if there are at least 60 inliers
+        if (inlierMatches.size() < 60)
+        {
+            return std::vector<Match>(); // Return an empty vector
+        }
+
+        return inlierMatches;
+    }
+
+	cv::Mat visualizeCorrespondences(const Image& sImg, const Image& tImg, const std::vector<Match>& matches)
 	{
-		// TODO implement correspondences
-		return {};
+		std::vector<cv::DMatch> cvMatches;
+		for (const auto& match : matches)
+		{
+			cvMatches.emplace_back(match.sourceKeypointId, match.targetKeyopintId, match.weight);
+		}
+
+		cv::Mat imgMatches;
+		cv::drawMatches(sImg.rgb, sImg.keypoints, tImg.rgb, tImg.keypoints, cvMatches, imgMatches);
+		return imgMatches;
 	}
 
 private:
-	std::vector<FeatureT> points;
-	float threshold;
-
-	void buildIndex(const Image &targetImage)
-	{
-		points = matToVector(targetImage.descriptors);
-	}
-
-	Match getClosestPoint(const FeatureT &p)
-	{
-		// return the cosine similarity as weight
-		int idx = -1;
-		float minDist = std::numeric_limits<float>::max();
-		float maxSimilarity = -1.0;
-		for (unsigned int i = 0; i < points.size(); ++i)
-		{
-			float similarity = p.dot(points[i]) / (p.norm() * points[i].norm());
-			if (maxSimilarity < similarity && similarity > threshold)
-			{
-				idx = i;
-				maxSimilarity = similarity;
-			}
-		}
-		// build the match for the target, missing source id
-		Match match;
-		match.targetKeyopintId = idx;
-		match.weight = maxSimilarity;
-		if (idx == -1)
-			match.weight = 0;
-		return match;
-	}
-
-	std::vector<FeatureT> matToVector(const cv::Mat &mat)
-	{
-		std::vector<FeatureT> vec;
-		vec.reserve(mat.rows);
-
-		for (int i = 0; i < mat.rows; ++i)
-		{
-			FeatureT feature;
-			for (int j = 0; j < FeatureSize; ++j)
-			{
-				feature(j, 0) = mat.at<float>(i, j);
-			}
-			vec.push_back(feature);
-		}
-		return vec;
-	}
+    cv::Ptr<cv::flann::Index> flannIndex;
+    cv::Mat targetDescriptors;
 };
