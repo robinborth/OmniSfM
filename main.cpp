@@ -8,6 +8,10 @@
 #include "src/CorrespondenceSearch.h"
 #include "src/Utils.h"
 #include "src/SfMInitializer.h"
+#include "src/SimpleMesh.h"
+#include "src/Visualization.h"
+
+
 
 int main()
 {
@@ -56,7 +60,7 @@ int main()
     // }
 
     // While loading images you can adjust the number of images to load
-    // For the whole dataset there are 789 images and it will take too long 
+    // For the whole dataset there are 789 images and it will take too long
     // Maybe choose something like 100-200 images
     auto allMatches = search.queryCorrespondences(imageStorage.images);
 
@@ -73,6 +77,13 @@ int main()
 
     std::cout << "Point cloud saved to " << outputFilename << std::endl;
 
+    Visualization myVis = Visualization("myOutput");
+
+    myVis.addVertex(points3D);
+    //myVis.addCamera()
+    myVis.fillCamerasWithDefaultValues();
+    myVis.fillPointCloudWithDefaultValues();
+    myVis.writeAllMeshes();
 
 
     // std::cout << "(TODO) ==> Optimize SfM ..." << std::endl;
