@@ -8,6 +8,10 @@
 #include "src/CorrespondenceSearch.h"
 #include "src/Utils.h"
 #include "src/SfMInitializer.h"
+#include "src/SimpleMesh.h"
+#include "src/Visualization.h"
+
+
 
 int main()
 {
@@ -60,6 +64,13 @@ int main()
     // // Save points to file for visualization
     // std::string outputFilename = "point_cloud.xyz";
     // savePointsToFile(points3D, outputFilename);
+    Visualization myVis = Visualization("myOutput");
+
+    myVis.addVertex(points3D);
+    //myVis.addCamera()
+    myVis.fillCamerasWithDefaultValues();
+    myVis.fillPointCloudWithDefaultValues();
+    myVis.writeAllMeshes();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;
 
