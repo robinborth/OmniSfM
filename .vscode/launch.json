@@ -1,25 +1,30 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-      {
-        "name": "Debug sfm",
-        "type": "lldb",
-        "request": "launch",
-        "program": "${workspaceFolder}/build/sfm", // Adjust if necessary
-        "args": [],
-        "stopOnEntry": false,
-        "cwd": "${workspaceFolder}",
-        "environment": [],
-        "externalConsole": false,
-        "preLaunchTask": "CMake: build",
-        "sourceMap": {
-          "/build": "${workspaceFolder}/build"
-        },
-        "initCommands": [],
-        "logging": {
-          "engineLogging": true
-        }
-      }
-    ]
-  }
-  
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug sfm",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/sfm", // Adjust if necessary
+      "args": [],
+      "stopOnEntry": false,
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "CMake: build",
+      "sourceMap": {
+        "/build": "${workspaceFolder}/build"
+      },
+      "initCommands": [],
+    },
+    {
+      "name": "Debug: Preprocess",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "scripts/dataset.py",
+      "args": [
+        "--data=rgbd_dataset_freiburg1_xyz",
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false,
+    },
+  ]
+}

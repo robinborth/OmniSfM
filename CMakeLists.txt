@@ -2,16 +2,6 @@ cmake_minimum_required(VERSION 3.6)
 
 project(sfm)
 
-add_definitions(-w)
-
-# options
-# set(LIBRARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs CACHE PATH "Path to lib folder")
-# set(Eigen3_DIR ${LIBRARY_DIR}/eigen-3.4.0/cmake CACHE PATH "Path to installed Eigen")
-# set(glog_DIR ${LIBRARY_DIR}/glog-0.5.0/cmake CACHE PATH "Path to installed glog")
-# set(Ceres_DIR ${LIBRARY_DIR}/ceres-solver-2.0.0/cmake CACHE PATH "Path to installed Ceres")
-# set(Flann_INCLUDE_DIR ${LIBRARY_DIR}/flann-1.8.4/cmake CACHE PATH "Path to Flann source folder")
-# set(OpenCV_DIR ${LIBRARY_DIR}/opencv-4.9.0/cmake CACHE PATH "Path to OpenCV source folder")
-
 # options
 set(LIBRARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libs CACHE PATH "Path to lib folder")
 set(Eigen3_DIR ${LIBRARY_DIR}/eigen/share/eigen3/cmake CACHE PATH "Path to installed Eigen")
@@ -42,3 +32,6 @@ add_definitions("-D_DISABLE_EXTENDED_ALIGNED_STORAGE")
 add_executable(sfm main.cpp)
 target_link_libraries(sfm ceres Eigen3::Eigen ${OpenCV_LIBS})
 target_include_directories(sfm PUBLIC ${EIGEN3_INCLUDE_DIR} ${Flann_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src)
+
+# set the root directory 
+add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}\")

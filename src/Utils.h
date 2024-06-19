@@ -37,7 +37,7 @@ cv::Mat visualizeCorrespondences(Image source, Image target, std::vector<Match> 
     return combinedImage;
 }
 
-cv::Mat getIntrinsicsFromSensor(VirtualSensor& sensor)
+cv::Mat getIntrinsicsFromSensor(VirtualSensor &sensor)
 {
     // Get the intrinsics from the sensor
     Matrix3f depthIntrinsics = sensor.GetDepthIntrinsics();
@@ -50,13 +50,13 @@ cv::Mat getIntrinsicsFromSensor(VirtualSensor& sensor)
 
     // Construct the K matrix
     cv::Mat K = (cv::Mat_<double>(3, 3) << fX, 0, cX,
-                                           0, fY, cY,
-                                           0, 0, 1);
+                 0, fY, cY,
+                 0, 0, 1);
 
     return K;
 }
 
-void savePointsToFile(const std::vector<cv::Point3f>& points3D, const std::string& filename)
+void savePointsToFile(const std::vector<cv::Point3f> &points3D, const std::string &filename)
 {
     std::ofstream outFile(filename);
     if (!outFile)
@@ -65,7 +65,7 @@ void savePointsToFile(const std::vector<cv::Point3f>& points3D, const std::strin
         return;
     }
 
-    for (const auto& point : points3D)
+    for (const auto &point : points3D)
     {
         outFile << point.x << " " << point.y << " " << point.z << std::endl;
     }

@@ -6,22 +6,30 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include "Settings.h"
 
 struct Image
 {
     int64_t id;
+    // rgb settings
     cv::Mat rgb;
-    cv::Mat normal;
-    cv::Mat depth;
     std::vector<cv::KeyPoint> keypoints;
     cv::Mat descriptors;
+    cv::Mat R; // world to camera
+    cv::Mat t;
+    cv::Mat K; // intrinsics matrix
+    // depth information
+    cv::Mat depth;
+    float q; // shift factor
+    float w; // scale factor
 };
 
 class ImageStorage
 {
 public:
-    ImageStorage(const std::string &datasetDir) : datasetDir(datasetDir)
+    ImageStorage(const Settings &settings)
     {
+        this->datasetDir = settings.rootDir + "/data/" + settings.dataset + "/";
         this->sift = cv::SIFT::create();
     };
 
@@ -31,11 +39,12 @@ public:
     {
         if (!readFileList("rgb", filenameRGBImages, idRGBImages) || !loadImages("rgb", filenameRGBImages, idRGBImages))
             return;
-        // TODO: Figure out how to load depth images because of th id problem
-        // if (!readFileList("depth", filenameDepthImages, idDepthImages) || !loadImages("depth", filenameDepthImages, idDepthImages))
-        //     return;
-        // if (!readFileList("normal", filenameNormalImages, idNormalImages) || !loadImages("normal", filenameNormalImages, idNormalImages))
-        //     return;
+        if (!readFileList("depth", filenameDepthImages, idDepthImages) || !loadImages("depth", filenameDepthImages, idDepthImages))
+            return;
+        if (!readIntrinsics())
+            return;
+        // Optional: try to read the extrinsics but they don't need to be provided extrinsics.txt
+        readExtrinsics();
     }
 
     void detectKeypoints()
@@ -62,7 +71,6 @@ public:
         cv::imwrite(outputPath, img_keypoints);
     }
 
-
     Image *findImage(int64_t id)
     {
         auto it = std::find_if(images.begin(), images.end(), [id](Image &a)
@@ -74,6 +82,90 @@ public:
     }
 
 private:
+    bool readIntrinsics()
+    {
+        std::string filePath = datasetDir + "intrinsics.txt";
+        std::ifstream fileList(filePath, std::ios::in);
+        if (!fileList.is_open())
+        {
+            std::cerr << "Error: Could not open the file " << filePath << std::endl;
+            return false;
+        }
+        // skip the header
+        std::string dump;
+        std::getline(fileList, dump);
+        while (fileList.good())
+        {
+            int64_t id;
+            fileList >> id;
+            float fX;
+            fileList >> fX;
+            float fY;
+            fileList >> fY;
+            float cX;
+            fileList >> cX;
+            float cY;
+            fileList >> cY;
+
+            Image *img = findImage(id);
+            if (!img) // not found create a new image
+            {
+                std::cout << "At the point for attaching the intrinsics we need to have created the image with id:" << id << std::endl;
+                return false;
+            }
+            img->K = (cv::Mat_<float>(3, 3) << fX, 0.0f, cX,
+                      0.0f, fY, cY,
+                      0.0f, 0.0f, 1.0f);
+        }
+        fileList.close();
+        return true;
+    }
+
+    bool readExtrinsics()
+    {
+        std::string filePath = datasetDir + "extrinsics.txt";
+        std::ifstream fileList(filePath, std::ios::in);
+        if (!fileList.is_open())
+        {
+            std::cerr << "No extrinsics.txt groundtruth file found." << filePath << std::endl;
+            return false;
+        }
+        // skip the header
+        std::string dump;
+        std::getline(fileList, dump);
+        while (fileList.good())
+        {
+            int64_t id;
+            fileList >> id;
+            float tx;
+            fileList >> tx;
+            float ty;
+            fileList >> ty;
+            float tz;
+            fileList >> tz;
+            float qx;
+            fileList >> qx;
+            float qy;
+            fileList >> qy;
+            float qz;
+            fileList >> qz;
+            float qw;
+            fileList >> qw;
+
+            Image *img = findImage(id);
+            if (!img) // not found create a new image
+            {
+                std::cout << "At the point for attaching the extrinsics we need to have created the image with id:" << id << std::endl;
+                return false;
+            }
+            cv::Vec4f q(qx, qy, qz, qw);
+            quaternionToRotationMatrix(q, img->R);
+            img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
+        }
+        fileList.close();
+        return true;
+    }
+
     bool readFileList(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
     {
         std::string filePath = datasetDir + type + ".txt";
@@ -83,41 +175,25 @@ private:
             std::cerr << "Error: Could not open the file " << filePath << std::endl;
             return false;
         }
-
+        // skip the header
         filenames.clear();
         ids.clear();
-        std::string line;
-        while (std::getline(fileDepthList, line))
+        std::string dump;
+        std::getline(fileDepthList, dump);
+        while (fileDepthList.good())
         {
-            // Skip comments
-            if (line.empty() || line[0] == '#')
-                continue;
-
-            std::istringstream iss(line);
-            std::string id_str, filename;
-            if (!(iss >> id_str >> filename))
-            {
-                std::cerr << "Error parsing line: " << line << std::endl;
-                continue;
-            }
-            id_str.erase(std::remove(id_str.begin(), id_str.end(), '.'), id_str.end());
-            //std::cout << "ID: " << id_str << " Filename: " << filename << std::endl;
-
-            try {
-                int64_t id = std::stoull(id_str);
-                //std::cout << "ID: " << id << " Filename: " << filename << std::endl;
-                filenames.push_back(datasetDir + filename);
-                ids.push_back(id);
-            } catch (const std::exception &e) {
-                std::cerr << "Error converting ID: " << id_str << " - " << e.what() << std::endl;
-                continue;
-            }
+            uint16_t id;
+            fileDepthList >> id;
+            std::string filename;
+            fileDepthList >> filename;
+            if (filename == "")
+                break;
+            filenames.push_back(datasetDir + filename);
+            ids.push_back(id);
         }
-
         fileDepthList.close();
         return true;
     }
-
 
     bool checkLoadImage(cv::Mat image)
     {
@@ -131,7 +207,7 @@ private:
 
     bool loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
     {
-        for (size_t i = 0; i < filenames.size(); ++i)   // ADJUST THIS TO LOAD ONLY A FEW IMAGES
+        for (size_t i = 0; i < filenames.size(); ++i) // ADJUST THIS TO LOAD ONLY A FEW IMAGES
         {
             int64_t id = ids[i];
             std::cout << "Loading image with id " << id << std::endl;
@@ -152,31 +228,45 @@ private:
                 if (!checkLoadImage(rgbImage))
                     return false;
             }
-            // if (type == "normal")
-            // {
-            //     cv::Mat normalImage = cv::imread(filenames[i], cv::IMREAD_COLOR);
-            //     img->normal = normalImage;
-            //     if (!checkLoadImage(normalImage))
-            //         return false;
-            // }
-            // if (type == "depth")
-            // {
-            //     cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
-            //     img->depth = depthImage;
-            //     if (!checkLoadImage(depthImage))
-            //         return false;
-            // }
+            if (type == "depth")
+            {
+                cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
+                img->depth = depthImage;
+                if (!checkLoadImage(depthImage))
+                    return false;
+            }
+
+            img->w = 1.0;
+            img->q = 0.0;
         }
-        std::cout << "Loaded rgb images" << images.size() << std::endl;
+        std::cout << "Loaded images: " << images.size() << std::endl;
         return true;
+    }
+
+    void quaternionToRotationMatrix(const cv::Vec4f &q, cv::Mat &R)
+    {
+        // Ensure the rotation matrix is 3x3
+        R = cv::Mat::zeros(3, 3, CV_32F);
+
+        float qw = q[3], qx = q[0], qy = q[1], qz = q[2];
+
+        R.at<float>(0, 0) = 1 - 2 * qy * qy - 2 * qz * qz;
+        R.at<float>(0, 1) = 2 * qx * qy - 2 * qz * qw;
+        R.at<float>(0, 2) = 2 * qx * qz + 2 * qy * qw;
+
+        R.at<float>(1, 0) = 2 * qx * qy + 2 * qz * qw;
+        R.at<float>(1, 1) = 1 - 2 * qx * qx - 2 * qz * qz;
+        R.at<float>(1, 2) = 2 * qy * qz - 2 * qx * qw;
+
+        R.at<float>(2, 0) = 2 * qx * qz - 2 * qy * qw;
+        R.at<float>(2, 1) = 2 * qy * qz + 2 * qx * qw;
+        R.at<float>(2, 2) = 1 - 2 * qx * qx - 2 * qy * qy;
     }
 
     std::string datasetDir;
     cv::Ptr<cv::SIFT> sift;
     std::vector<std::string> filenameDepthImages;
     std::vector<int64_t> idDepthImages;
-    std::vector<std::string> filenameNormalImages;
-    std::vector<int64_t> idNormalImages;
     std::vector<std::string> filenameRGBImages;
     std::vector<int64_t> idRGBImages;
 };
