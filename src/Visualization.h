@@ -205,6 +205,7 @@ public:
             std::cout << "Failed to write mesh!\nCheck file path!" << std::endl;
             return -1;
         }
+        return 1; // Supress warning of no return
     }
 
     void addVertex(const cv::Point3f &point){
@@ -253,10 +254,13 @@ public:
             std::cout << "Failed to write mesh!\nCheck file path!" << std::endl;
             return -1;
         }
+        return 1; // Supress warning of no return
     }
 
-    int writeAllMeshes(){
-        writeCameraMesh();
-        writePointCloudMesh();
+    int writeAllMeshes()
+    {
+        if (writeCameraMesh() == -1 || writePointCloudMesh() == -1)
+            return -1;
+        return 1;
     }
 };

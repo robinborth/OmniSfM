@@ -23,14 +23,14 @@ public:
         targetDescriptors = targetImage.descriptors;
     }
 
-    Match getClosestPoint(const cv::Mat& sourceDescriptor)
+    Match getClosestPoint(const cv::Mat& sourceDescriptor, float loweRatio)
     {
         std::vector<int> indices(2); // Find the 2 nearest neighbors
         std::vector<float> dists(2); // Their distances
         flannIndex->knnSearch(sourceDescriptor, indices, dists, 2, cv::flann::SearchParams(8)); // Using 2 neighbors for ratio test
 
         Match match;
-        if (dists[0] < 0.5f * dists[1]) // Lowe's ratio test with a ratio of 0.7
+        if (dists[0] < loweRatio * dists[1]) // Lowe's ratio test with a ratio of 0.7
         {
             match.targetKeyopintId = indices[0];
             match.weight = dists[0];
@@ -65,7 +65,7 @@ public:
         std::vector<Match> matches;
         for (size_t i = 0; i < sourcePoints.size(); ++i)
         {
-            Match match = getClosestPoint(sourcePoints[i]);
+            Match match = getClosestPoint(sourcePoints[i], 0.2f);
             if (match.targetKeyopintId != -1)
             {
                 match.sourceKeypointId = i;
@@ -74,6 +74,7 @@ public:
                 matches.push_back(match);
             }
         }
+        std::cout << "==> Before Filtering Found " << matches.size() << " matches ..." << std::endl;
         return matches;
     }
 
@@ -92,6 +93,7 @@ public:
 				// Only keep pairs with at least 60 matches
 				if (inlierMatches.size() >= 60)
 				{
+                    printf("==> Found %lu inlier matches between images %lu and %lu\n", inlierMatches.size(), i, j);
 					allMatches[i].insert(allMatches[i].end(), inlierMatches.begin(), inlierMatches.end());
 				}
 			}
@@ -111,24 +113,22 @@ public:
             dstPoints.push_back(tImg.keypoints[match.targetKeyopintId].pt);
         }
 
-        // Use RANSAC to find the fundamental matrix and filter matches
-        std::vector<uchar> inliersMask(srcPoints.size());
-        cv::Mat fundamentalMatrix = cv::findFundamentalMat(srcPoints, dstPoints, inliersMask, cv::FM_RANSAC);
+        // Check if there are enough points for the 8-point algorithm
+        if (srcPoints.size() < 8 || dstPoints.size() < 8) {
+            std::cerr << "Not enough points to use the 8-point algorithm" << std::endl;
+            return {}; // Return an empty vector if not enough points
+        }
+
+        // Use RANSAC to find the fundamental matrix
+        std::vector<uchar> inliersMask(srcPoints.size(), 0);
+        cv::Mat fundamentalMatrix = cv::findFundamentalMat(srcPoints, dstPoints, cv::FM_RANSAC, 1, 0.999, inliersMask);
 
         // Filter matches based on inliers mask
         std::vector<Match> inlierMatches;
-        for (size_t i = 0; i < matches.size(); ++i)
-        {
-            if (inliersMask[i])
-            {
+        for (size_t i = 0; i < matches.size(); ++i) {
+            if (inliersMask[i]) {
                 inlierMatches.push_back(matches[i]);
             }
-        }
-
-        // Only keep matches if there are at least 60 inliers
-        if (inlierMatches.size() < 60)
-        {
-            return std::vector<Match>(); // Return an empty vector
         }
 
         return inlierMatches;

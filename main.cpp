@@ -26,8 +26,8 @@ int main()
     // SIFT feature detection
     std::cout << "==> Detect keypoints ..." << std::endl;
     imageStorage.detectKeypoints();
-    imageStorage.drawKeypoints(0, "keypoints00000.jpg");
-    imageStorage.drawKeypoints(1, "keypoints00001.jpg");
+    // imageStorage.drawKeypoints(0, "keypoints00000.jpg");
+    // imageStorage.drawKeypoints(1, "keypoints00001.jpg");
 
     // TODO Do here the visualization of the GT point cloud
     // 1) Use extrinsics and intrinsics from freiburg with depth map
@@ -35,31 +35,38 @@ int main()
     // Correspondecne search with debugging
     CorrespondenceSearch search;
 
-    std::cout << "==> Visualize correspondences between id=0 and id=1 ..." << std::endl;
-    auto &sImg = imageStorage.images[0];
-    auto &tImg = imageStorage.images[1];
-    std::vector<Match> matches = search.queryMatches(sImg, tImg);
-    cv::Mat correspondenceImage = search.visualizeCorrespondences(sImg, tImg, matches);
-    cv::imwrite("correspondenceImage.jpg", correspondenceImage);
-    std::cout << "==> Found " << matches.size() << " matches ..." << std::endl;
+    // std::cout << "==> Visualize correspondences between id=0 and id=1 ..." << std::endl;
+    // auto &sImg = imageStorage.images[0];
+    // auto &tImg = imageStorage.images[1];
+    // std::vector<Match> matches = search.queryMatches(sImg, tImg);
+    // cv::Mat correspondenceImage = search.visualizeCorrespondences(sImg, tImg, matches);
+    // cv::imwrite("correspondenceImage.jpg", correspondenceImage);
+    // std::cout << "==> Found " << matches.size() << " matches ..." << std::endl;
 
-    std::cout << "==> Visualize inliers between id=0 and id=1 ..." << std::endl;
-    auto inlierMatches = search.filterMatchesWithRANSAC(sImg, tImg, matches);
-    cv::Mat inlierImage = search.visualizeCorrespondences(sImg, tImg, inlierMatches);
-    cv::imwrite("inlierImage.jpg", inlierImage);
-    std::cout << "==> Found " << inlierMatches.size() << " inlier matches ..." << std::endl;
+    // std::cout << "==> Visualize inliers between id=0 and id=1 ..." << std::endl;
+    // auto inlierMatches = search.filterMatchesWithRANSAC(sImg, tImg, matches);
+    // cv::Mat inlierImage = search.visualizeCorrespondences(sImg, tImg, inlierMatches);
+    // cv::imwrite("inlierImage.jpg", inlierImage);
+    // std::cout << "==> Found " << inlierMatches.size() << " inlier matches ..." << std::endl;
 
     std::cout << "==> Find correspondences ..." << std::endl;
     auto allMatches = search.queryCorrespondences(imageStorage.images);
-    std::cout << "==> Found " << allMatches.size() << " matches ..." << std::endl;
+
+    size_t totalMatches = 0;
+
+    // Iterate over each vector of matches and add up their sizes
+    for (const auto& matches : allMatches) {
+        totalMatches += matches.size();
+    }
+
+    std::cout << "Total number of matches: " << totalMatches << std::endl;
 
     // // Create an instance of StructureFromMotion
-    // cv::Mat K = imageStorage.images[0].K; // assume that all the Ks are the same
-    // SfMInitializer sfm(K);                // TODO this needs to handle multiple Ks for each different image
+    SfMInitializer sfm;                // TODO this needs to handle multiple Ks for each different image
 
-    // // Run Structure from Motion
-    // sfm.runSfM(imageStorage.images, allMatches);
-    // const auto &points3D = sfm.getPoints3D();
+    // Run Structure from Motion
+    sfm.runSfM(imageStorage.images, allMatches);
+    const auto &points3D = sfm.getPoints3D();
 
     // // Save points to file for visualization
     // std::string outputFilename = "point_cloud.xyz";

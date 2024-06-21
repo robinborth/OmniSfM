@@ -113,9 +113,10 @@ private:
                 std::cout << "At the point for attaching the intrinsics we need to have created the image with id:" << id << std::endl;
                 return false;
             }
-            img->K = (cv::Mat_<float>(3, 3) << fX, 0.0f, cX,
-                      0.0f, fY, cY,
-                      0.0f, 0.0f, 1.0f);
+            cv::Mat K_temp = (cv::Mat_<float>(3, 3) << fX, 0.0f, cX,
+                            0.0f, fY, cY,
+                            0.0f, 0.0f, 1.0f);
+            K_temp.convertTo(img->K, CV_64F); // Convert K_temp to double precision and store in img->K
         }
         fileList.close();
         return true;
@@ -207,7 +208,7 @@ private:
 
     bool loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
     {
-        for (size_t i = 0; i < filenames.size(); ++i) // ADJUST THIS TO LOAD ONLY A FEW IMAGES
+        for (size_t i = 0; i < 11; ++i) // ADJUST THIS TO LOAD ONLY A FEW IMAGES
         {
             int64_t id = ids[i];
             std::cout << "Loading image with id " << id << std::endl;
