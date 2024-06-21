@@ -30,7 +30,7 @@ public:
         flannIndex->knnSearch(sourceDescriptor, indices, dists, 2, cv::flann::SearchParams(8)); // Using 2 neighbors for ratio test
 
         Match match;
-        if (dists[0] < loweRatio * dists[1]) // Lowe's ratio test with a ratio of 0.7
+        if (dists[0] < loweRatio * dists[1]) // Lowe's ratio test
         {
             match.targetKeyopintId = indices[0];
             match.weight = dists[0];
@@ -65,7 +65,7 @@ public:
         std::vector<Match> matches;
         for (size_t i = 0; i < sourcePoints.size(); ++i)
         {
-            Match match = getClosestPoint(sourcePoints[i], 0.2f);
+            Match match = getClosestPoint(sourcePoints[i], 0.02f);
             if (match.targetKeyopintId != -1)
             {
                 match.sourceKeypointId = i;

@@ -11,6 +11,20 @@
 #include "src/SimpleMesh.h"
 #include "src/Visualization.h"
 
+#include <opencv2/viz.hpp>
+
+void visualizePointCloud(const std::vector<cv::Point3f>& points) {
+    cv::viz::Viz3d window("Point Cloud");
+
+    // Convert points to cv::Mat
+    cv::Mat pointCloudMat = cv::Mat(points).reshape(3, points.size());
+
+    // Create a cloud widget
+    cv::viz::WCloud cloudWidget(pointCloudMat, cv::viz::Color::green());
+
+    window.showWidget("Cloud", cloudWidget);
+    window.spin();
+}
 
 
 int main()
@@ -68,16 +82,13 @@ int main()
     sfm.runSfM(imageStorage.images, allMatches);
     const auto &points3D = sfm.getPoints3D();
 
-    // // Save points to file for visualization
-    // std::string outputFilename = "point_cloud.xyz";
-    // savePointsToFile(points3D, outputFilename);
-    Visualization myVis = Visualization("myOutput");
-
-    myVis.addVertex(points3D);
-    //myVis.addCamera()
-    myVis.fillCamerasWithDefaultValues();
-    myVis.fillPointCloudWithDefaultValues();
-    myVis.writeAllMeshes();
+    visualizePointCloud(points3D);
+    // Visualization myVis = Visualization("myOutput");
+    // myVis.addVertex(points3D);
+    // //myVis.addCamera()
+    // myVis.fillCamerasWithDefaultValues();
+    // myVis.fillPointCloudWithDefaultValues();
+    // myVis.writeAllMeshes();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;
 
