@@ -30,6 +30,13 @@ class SimpleMesh {
 public:
 	SimpleMesh() {}
 
+	Vector3f inverseProject(float x, float y, float depth, float fX, float fY, float cX, float cY)
+	{
+		float x_ = (x - cX) * depth / fX;
+		float y_ = (y - cY) * depth / fY;
+		return Vector3f(x_, y_, depth);
+	}
+
 	/**
 	 * Constructs a mesh from the current color and depth image.
 	 */
@@ -55,34 +62,38 @@ public:
 		Matrix4f cameraPoseInverse = cameraPose.inverse();
 
 		// Compute vertices with back-projection.
+		int h = sensor.GetDepthImageHeight();
+		int w = sensor.GetDepthImageWidth();
 		m_vertices.resize(sensor.GetDepthImageWidth() * sensor.GetDepthImageHeight());
 		// For every pixel row.
-		for (unsigned int v = 0; v < sensor.GetDepthImageHeight(); ++v) {
+		for (unsigned int y = 0; y < h; ++y) {
 			// For every pixel in a row.
-			for (unsigned int u = 0; u < sensor.GetDepthImageWidth(); ++u) {
-				unsigned int idx = v*sensor.GetDepthImageWidth() + u; // linearized index
+			for (unsigned int x = 0; x < w; ++x) {
+				unsigned int idx = y * w + x;
 				float depth = depthMap[idx];
 				if (depth == MINF) {
 					m_vertices[idx].position = Vector4f(MINF, MINF, MINF, MINF);
 					m_vertices[idx].color = Vector4uc(0, 0, 0, 0);
 				}
-				else {
-					// Back-projection and tranformation to world space.
-					m_vertices[idx].position = cameraPoseInverse * depthExtrinsicsInv * Vector4f((u - cX) / fovX * depth, (v - cY) / fovY * depth, depth, 1.0f);
+				else 
+				{
+					Vector3f pointCameraSpace = inverseProject(x, y, depth, fovX, fovY, cX, cY);
+					Vector4f pointWorldSpace = cameraPoseInverse * depthExtrinsicsInv * Vector4f(pointCameraSpace.x(), pointCameraSpace.y(), pointCameraSpace.z(), 1.0f);
 
-					// Project position to color map.
-					Vector3f proj = sensor.GetColorIntrinsics() * (sensor.GetColorExtrinsics() * cameraPose * m_vertices[idx].position).block<3, 1>(0, 0);
-					proj /= proj.z(); // dehomogenization
-					unsigned int uCol = (unsigned int)std::floor(proj.x());
-					unsigned int vCol = (unsigned int)std::floor(proj.y());
-					if (uCol >= sensor.GetColorImageWidth()) uCol = sensor.GetColorImageWidth() - 1;
-					if (vCol >= sensor.GetColorImageHeight()) vCol = sensor.GetColorImageHeight() - 1;
-					unsigned int idxCol = vCol*sensor.GetColorImageWidth() + uCol; // linearized index color
-																					//unsigned int idxCol = idx; // linearized index color
+					m_vertices[idx].position = pointWorldSpace;
 
-					// Write color to vertex.
-					m_vertices[idx].color = Vector4uc(colorMap[4 * idxCol + 0], colorMap[4 * idxCol + 1], colorMap[4 * idxCol + 2], colorMap[4 * idxCol + 3]);
-				}
+					// Project this 3D point to the color image to get the corresponding color.
+					Vector3f colorPoint = (sensor.GetColorExtrinsics() * cameraPose * pointWorldSpace).head<3>();
+					colorPoint = sensor.GetColorIntrinsics() * colorPoint;
+					colorPoint /= colorPoint.z();  // Normalize to get pixel coordinates
+
+					int colorX = std::min(std::max(int(colorPoint.x()), 0), int(sensor.GetColorImageWidth() - 1));
+					int colorY = std::min(std::max(int(colorPoint.y()), 0), int(sensor.GetColorImageHeight() - 1));
+					int colorIdx = colorY * sensor.GetColorImageWidth() + colorX;
+
+					// Ensure RGBX data is accessed correctly
+					m_vertices[idx].color = Vector4uc(colorMap[4 * colorIdx + 0], colorMap[4 * colorIdx + 1], colorMap[4 * colorIdx + 2], 255);
+            	}
 			}
 		}
 

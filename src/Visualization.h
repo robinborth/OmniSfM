@@ -212,10 +212,17 @@ public:
         Vertex point2Vertex = {{point.x,point.y,point.z,1.0f},{255,255,255,1}};
         this->_pointCloudMesh.addVertex(point2Vertex);
     }
-    void addVertex(const std::vector<cv::Point3f> &points){
-        for (const auto& point : points) {
-            Vertex point2Vertex = {{point.x, point.y, point.z, 1.0f},
-                                   {255,      255,      255,      1}};
+    void addVertex(const std::vector<cv::Point3f> &points, const std::vector<cv::Vec3b> &colors) 
+    {
+        if (points.size() != colors.size()) {
+            std::cerr << "Error: The number of points and colors must match." << std::endl;
+            return;
+        }
+        for (size_t i = 0; i < points.size(); ++i) {
+            Vertex point2Vertex = {
+                {points[i].x, points[i].y, points[i].z, 1.0f},
+                {colors[i][0], colors[i][1], colors[i][2], 255}
+            };
             this->_pointCloudMesh.addVertex(point2Vertex);
         }
     }
@@ -226,7 +233,7 @@ public:
 
     void addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses){
         for (const auto& pose : cameraPoses) {
-            this->_cameraMesh =  SimpleMesh::joinMeshes(SimpleMesh::camera(pose, 0.0005f), _cameraMesh, Matrix4f::Identity());
+            this->_cameraMesh =  SimpleMesh::joinMeshes(SimpleMesh::camera(pose, 0.5f), _cameraMesh, Matrix4f::Identity());
         }
     }
 

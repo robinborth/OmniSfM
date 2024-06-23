@@ -80,15 +80,23 @@ int main()
 
     // Run Structure from Motion
     sfm.runSfM(imageStorage.images, allMatches);
-    const auto &points3D = sfm.getPoints3D();
+    const std::vector<SfMInitializer::ColoredPoint3f> &points3D = sfm.getPoints3D();
+    const auto &cameraPoses = sfm.getCameraPoses();
 
-    visualizePointCloud(points3D);
-    // Visualization myVis = Visualization("myOutput");
-    // myVis.addVertex(points3D);
-    // //myVis.addCamera()
-    // myVis.fillCamerasWithDefaultValues();
-    // myVis.fillPointCloudWithDefaultValues();
-    // myVis.writeAllMeshes();
+    std::vector<cv::Point3f> points;
+    std::vector<cv::Vec3b> colors;
+
+    for (const auto& coloredPoint : points3D) {
+        points.push_back(coloredPoint.point);
+        colors.push_back(coloredPoint.color);
+    }
+        
+
+    //visualizePointCloud(points3D);
+    Visualization myVis = Visualization("myOutput");
+    myVis.addVertex(points , colors);
+    myVis.addCamera(cameraPoses);
+    myVis.writeAllMeshes();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;
 
