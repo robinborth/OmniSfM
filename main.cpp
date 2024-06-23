@@ -1,15 +1,16 @@
 #include <iostream>
 
-#include "src/Settings.h"
-#include "src/Eigen.h"
-#include "src/ImageStorage.h"
-#include "src/SfMOptimizer.h"
-#include "src/PointCloud.h"
-#include "src/CorrespondenceSearch.h"
-#include "src/Utils.h"
-#include "src/SfMInitializer.h"
-#include "src/SimpleMesh.h"
-#include "src/Visualization.h"
+#include "include/Settings.h"
+#include "include/Eigen.h"
+#include "include/ImageStorage.h"
+#include "include/SfMOptimizer.h"
+#include "include/PointCloud.h"
+#include "include/CorrespondenceSearch.h"
+#include "include/Utils.h"
+#include "include/SfMInitializer.h"
+#include "include/SimpleMesh.h"
+#include "include/Visualization.h"
+#include "include/Definitions.h"
 
 #include <opencv2/viz.hpp>
 
@@ -80,7 +81,7 @@ int main()
 
     // Run Structure from Motion
     sfm.runSfM(imageStorage.images, allMatches);
-    const std::vector<SfMInitializer::ColoredPoint3f> &points3D = sfm.getPoints3D();
+    const std::vector<ColoredPoint3f> &points3D = sfm.getPoints3D();
     const auto &cameraPoses = sfm.getCameraPoses();
 
     std::vector<cv::Point3f> points;
