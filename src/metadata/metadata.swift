@@ -14,7 +14,7 @@ func main() {
         print("Error: Provide an image path as argument.")
         return
     }
-    let fileURL = URL(fileURLWithPath: CommandLine.arguments[1])
+    let fileURL = URL(fileURLWithPath: CommandLine.arguments[1])    
     guard let data = try? Data(contentsOf: fileURL) else {
         print("Error: Could not get image data.")
         return
