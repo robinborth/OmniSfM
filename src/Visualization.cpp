@@ -230,7 +230,8 @@ void Visualization::addCamera(const Eigen::Matrix4f &cameraPose)
 
 void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses)
 {
-    for (const auto& pose : cameraPoses) {
+    for (const auto& pose : cameraPoses) 
+    {
         this->_cameraMesh =  SimpleMesh::joinMeshes(SimpleMesh::camera(pose, 0.5f), _cameraMesh, Matrix4f::Identity());
     }
 }
@@ -244,6 +245,7 @@ void Visualization::fillPointCloudWithDefaultValues()
         _pointCloudMesh.addVertex(point2Vertex);
     }
 }
+
 void Visualization::fillCamerasWithDefaultValues()
 {
     //SimpleMesh currentCameraMesh;

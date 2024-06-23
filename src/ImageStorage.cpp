@@ -17,8 +17,9 @@ void ImageStorage::loadImages()
         return;
     if (!readFileList("depth", filenameDepthImages, idDepthImages) || !loadImages("depth", filenameDepthImages, idDepthImages))
         return;
-    if (!readIntrinsics())
-        return;
+    // if (!readIntrinsics())
+    //     return;
+    readIntrinsics();
     // Optional: try to read the extrinsics but they don't need to be provided extrinsics.txt
     readExtrinsics();
 };
@@ -137,6 +138,7 @@ bool ImageStorage::readExtrinsics()
         cv::Vec4f q(qx, qy, qz, qw);
         quaternionToRotationMatrix(q, img->R);
         img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
+
     }
     fileList.close();
     return true;
@@ -183,7 +185,7 @@ bool ImageStorage::checkLoadImage(cv::Mat image)
 
 bool ImageStorage::loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
 {
-    for (size_t i = 0; i < 11; ++i) // ADJUST THIS TO LOAD ONLY A FEW IMAGES
+    for (size_t i = 0; i < 2; ++i) // ADJUST THIS TO LOAD ONLY A FEW IMAGES
     {
         int64_t id = ids[i];
         std::cout << "Loading image with id " << id << std::endl;

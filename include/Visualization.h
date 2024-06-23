@@ -10,15 +10,6 @@ public:
     Visualization();
     Visualization(const std::string filename);
 
-    //Function to create a simple point cloud of a cube
-    static std::vector<Eigen::Vector3f> generateSyntheticPointCloud();
-    // Function to create camera poses around the cube
-    static std::vector<Eigen::Matrix4f> generateSyntheticCameraPoses();
-    static void saveToPLY(const std::vector<Eigen::Vector3f> &points3D, const std::vector<Eigen::Matrix4f> &cameraPoses,
-                   const std::string &filename);
-    static void debugCorrespondenceMatching();
-
-
     void addVertex(const cv::Point3f &point);
     void addVertex(const std::vector<cv::Point3f> &points, const std::vector<cv::Vec3b> &colors) ;
     void addCamera(const Eigen::Matrix4f &cameraPose);
@@ -30,6 +21,14 @@ public:
     int writePointCloudMesh();
     int writeAllMeshes();
 private:
+    static void debugCorrespondenceMatching();
+    static std::vector<Eigen::Vector3f> generateSyntheticPointCloud();         //Function to create a simple point cloud of a cube
+
+    static std::vector<Eigen::Matrix4f> generateSyntheticCameraPoses();         // Function to create camera poses around the cube
+    static void saveToPLY(const std::vector<Eigen::Vector3f> &points3D, const std::vector<Eigen::Matrix4f> &cameraPoses,
+                   const std::string &filename);
+
+
     SimpleMesh _cameraMesh;
     SimpleMesh _pointCloudMesh;
     std::string _filename;

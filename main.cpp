@@ -11,22 +11,63 @@
 #include "include/SimpleMesh.h"
 #include "include/Visualization.h"
 #include "include/Definitions.h"
+#include <Eigen/Dense>
 
-#include <opencv2/viz.hpp>
 
-void visualizePointCloud(const std::vector<cv::Point3f>& points) {
-    cv::viz::Viz3d window("Point Cloud");
-
-    // Convert points to cv::Mat
-    cv::Mat pointCloudMat = cv::Mat(points).reshape(3, points.size());
-
-    // Create a cloud widget
-    cv::viz::WCloud cloudWidget(pointCloudMat, cv::viz::Color::green());
-
-    window.showWidget("Cloud", cloudWidget);
-    window.spin();
+void computeRelativePose(const cv::Mat& R1, const cv::Mat& t1, const cv::Mat& R2, const cv::Mat& t2, cv::Mat& R_rel, cv::Mat& t_rel) 
+{
+    if (R1.empty() || R2.empty() || t1.empty() || t2.empty()) {
+        throw std::runtime_error("One of the input matrices to computeRelativePose is empty");
+    }
+    R_rel = R2 * R1.t();
+    t_rel = t2 - R_rel * t1;
 }
 
+double calculateRotationError(const cv::Mat& R1, const cv::Mat& R2) 
+{
+    if (R1.empty() || R2.empty()) {
+        throw std::runtime_error("One of the input matrices to calculateRotationError is empty");
+    }
+    cv::Mat diff = R1 - R2;
+    return cv::norm(diff);
+}
+
+double calculateTranslationError(const cv::Mat& t1, const cv::Mat& t2) 
+{
+    if (t1.empty() || t2.empty()) {
+        throw std::runtime_error("One of the input matrices to calculateTranslationError is empty");
+    }
+    return cv::norm(t1 - t2);
+}
+
+void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix4f& estimatedPose) 
+{
+    // Compute the ground truth relative pose
+    cv::Mat R_rel, t_rel;
+    computeRelativePose(img1.R, img1.t, img2.R, img2.t, R_rel, t_rel);
+
+    // Extract the estimated relative pose
+    cv::Mat R_est_rel(3, 3, CV_32F);
+    cv::Mat t_est_rel(3, 1, CV_32F);
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            R_est_rel.at<float>(i, j) = estimatedPose(i, j);
+        }
+        t_est_rel.at<float>(i, 0) = estimatedPose(i, 3);
+    }
+
+    // Check if the estimated pose matrices are populated correctly
+    if (R_est_rel.empty() || t_est_rel.empty()) {
+        throw std::runtime_error("Estimated pose matrices are empty");
+    }
+
+    // Calculate the errors
+    double rotation_error = calculateRotationError(R_rel, R_est_rel);
+    double translation_error = calculateTranslationError(t_rel, t_est_rel);
+
+    std::cout << "Rotation Error: " << rotation_error << std::endl;
+    std::cout << "Translation Error: " << translation_error << std::endl;
+}
 
 int main()
 {
@@ -91,9 +132,25 @@ int main()
         points.push_back(coloredPoint.point);
         colors.push_back(coloredPoint.color);
     }
+
+    Image* img1 = imageStorage.findImage(0);
+    Image* img2 = imageStorage.findImage(1);
+
+    if (!img1 || !img2) {
+        std::cerr << "Failed to find one of the images." << std::endl;
+        return -1;
+    }
+    if (cameraPoses.empty()) {
+        std::cerr << "No estimated poses found." << std::endl;
+        return -1;
+    }
+    const Eigen::Matrix4f& estimatedPose = cameraPoses[0];
+
+    // Evaluate the pose error
+    evaluatePoseError(*img1, *img2, estimatedPose);
+
         
 
-    //visualizePointCloud(points3D);
     Visualization myVis = Visualization("myOutput");
     myVis.addVertex(points , colors);
     myVis.addCamera(cameraPoses);
