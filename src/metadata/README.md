@@ -10,8 +10,8 @@ Prints a JSON string of exif metadata to console.
 
 ## Folder
 
-```python
+```bash
 python process_folder.py <path/to/folder>
 ```
 
-For every file in the folder, a `.txt` file is created at `/data/<foldername>` containg the exif data as a JSON string.
+For every file in the folder, a `.txt` file is created at `/data/<foldername>`, containg the exif data as a JSON string.
