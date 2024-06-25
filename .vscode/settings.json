@@ -72,6 +72,8 @@
     "valarray": "cpp",
     "variant": "cpp",
     "vector": "cpp",
-    "algorithm": "cpp"
+    "algorithm": "cpp",
+    "dense": "cpp",
+    "any": "cpp"
   }
 }

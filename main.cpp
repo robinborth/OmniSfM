@@ -2,45 +2,48 @@
 
 #include "include/Settings.h"
 #include "include/Eigen.h"
+#include "include/Definitions.h"
 #include "include/ImageStorage.h"
 #include "include/SfMOptimizer.h"
 #include "include/PointCloud.h"
 #include "include/CorrespondenceSearch.h"
-#include "include/Utils.h"
 #include "include/SfMInitializer.h"
 #include "include/SimpleMesh.h"
 #include "include/Visualization.h"
-#include "include/Definitions.h"
+#include "include/Utils.h"
 #include <Eigen/Dense>
+#include <opencv2/core/eigen.hpp>
 
-
-void computeRelativePose(const cv::Mat& R1, const cv::Mat& t1, const cv::Mat& R2, const cv::Mat& t2, cv::Mat& R_rel, cv::Mat& t_rel) 
+void computeRelativePose(const cv::Mat &R1, const cv::Mat &t1, const cv::Mat &R2, const cv::Mat &t2, cv::Mat &R_rel, cv::Mat &t_rel)
 {
-    if (R1.empty() || R2.empty() || t1.empty() || t2.empty()) {
+    if (R1.empty() || R2.empty() || t1.empty() || t2.empty())
+    {
         throw std::runtime_error("One of the input matrices to computeRelativePose is empty");
     }
     R_rel = R2 * R1.t();
     t_rel = t2 - R_rel * t1;
 }
 
-double calculateRotationError(const cv::Mat& R1, const cv::Mat& R2) 
+double calculateRotationError(const cv::Mat &R1, const cv::Mat &R2)
 {
-    if (R1.empty() || R2.empty()) {
+    if (R1.empty() || R2.empty())
+    {
         throw std::runtime_error("One of the input matrices to calculateRotationError is empty");
     }
     cv::Mat diff = R1 - R2;
     return cv::norm(diff);
 }
 
-double calculateTranslationError(const cv::Mat& t1, const cv::Mat& t2) 
+double calculateTranslationError(const cv::Mat &t1, const cv::Mat &t2)
 {
-    if (t1.empty() || t2.empty()) {
+    if (t1.empty() || t2.empty())
+    {
         throw std::runtime_error("One of the input matrices to calculateTranslationError is empty");
     }
     return cv::norm(t1 - t2);
 }
 
-void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix4f& estimatedPose) 
+void evaluatePoseError(const Image &img1, const Image &img2, const Eigen::Matrix4f &estimatedPose)
 {
     // Compute the ground truth relative pose
     cv::Mat R_rel, t_rel;
@@ -49,15 +52,18 @@ void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix
     // Extract the estimated relative pose
     cv::Mat R_est_rel(3, 3, CV_32F);
     cv::Mat t_est_rel(3, 1, CV_32F);
-    for (int i = 0; i < 3; ++i) {
-        for (int j = 0; j < 3; ++j) {
+    for (int i = 0; i < 3; ++i)
+    {
+        for (int j = 0; j < 3; ++j)
+        {
             R_est_rel.at<float>(i, j) = estimatedPose(i, j);
         }
         t_est_rel.at<float>(i, 0) = estimatedPose(i, 3);
     }
 
     // Check if the estimated pose matrices are populated correctly
-    if (R_est_rel.empty() || t_est_rel.empty()) {
+    if (R_est_rel.empty() || t_est_rel.empty())
+    {
         throw std::runtime_error("Estimated pose matrices are empty");
     }
 
@@ -111,14 +117,15 @@ int main()
     size_t totalMatches = 0;
 
     // Iterate over each vector of matches and add up their sizes
-    for (const auto& matches : allMatches) {
+    for (const auto &matches : allMatches)
+    {
         totalMatches += matches.size();
     }
 
     std::cout << "Total number of matches: " << totalMatches << std::endl;
 
     // // Create an instance of StructureFromMotion
-    SfMInitializer sfm;                // TODO this needs to handle multiple Ks for each different image
+    SfMInitializer sfm; // TODO this needs to handle multiple Ks for each different image
 
     // Run Structure from Motion
     sfm.runSfM(imageStorage.images, allMatches);
@@ -128,33 +135,44 @@ int main()
     std::vector<cv::Point3f> points;
     std::vector<cv::Vec3b> colors;
 
-    for (const auto& coloredPoint : points3D) {
+    for (const auto &coloredPoint : points3D)
+    {
         points.push_back(coloredPoint.point);
         colors.push_back(coloredPoint.color);
     }
 
-    Image* img1 = imageStorage.findImage(0);
-    Image* img2 = imageStorage.findImage(1);
+    Image *img1 = imageStorage.findImage(0);
+    Image *img2 = imageStorage.findImage(1);
 
-    if (!img1 || !img2) {
+    if (!img1 || !img2)
+    {
         std::cerr << "Failed to find one of the images." << std::endl;
         return -1;
     }
-    if (cameraPoses.empty()) {
+    if (cameraPoses.empty())
+    {
         std::cerr << "No estimated poses found." << std::endl;
         return -1;
     }
-    const Eigen::Matrix4f& estimatedPose = cameraPoses[0];
+    const Eigen::Matrix4f &estimatedPose = cameraPoses[0];
 
     // Evaluate the pose error
     evaluatePoseError(*img1, *img2, estimatedPose);
 
-        
-
     Visualization myVis = Visualization("myOutput");
-    myVis.addVertex(points , colors);
+    myVis.addVertex(points, colors);
     myVis.addCamera(cameraPoses);
     myVis.writeAllMeshes();
+
+    // Iterate over each pixel
+    Visualization depthVis = Visualization("depthOutput");
+    for (auto &img : imageStorage.images)
+    {
+        std::cout << "Add image (" << img.id << ") to the visualiztion." << std::endl;
+        std::vector<ColoredPoint3f> coloredPoints = extractPointCloud(img);
+        depthVis.addVertex(coloredPoints);
+    }
+    depthVis.writeAllMeshes();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;
 

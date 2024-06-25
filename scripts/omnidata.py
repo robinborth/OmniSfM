@@ -1,3 +1,5 @@
+import numpy as np
+import cv2
 import torch
 import torch.nn.functional as F
 from torchvision.transforms import v2
@@ -100,10 +102,13 @@ if __name__ == "__main__":
         output_path = Path(data_dir, task, rgb_input.name)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         if task == "depth":
-            output = output.clamp(0, 1)
-            output = 1 - output
-            plt.imsave(output_path, output.detach().cpu().squeeze(), cmap="viridis")
-            # v2.functional.to_pil_image(output).save(output_path)
+            max_v = 2**16 - 1
+            output = output.clamp(0, 1).detach().cpu().numpy()
+            # normalize between [0, 1], to have hight depth precision
+            output /= output.max()
+            output = np.clip(output * max_v, 0, max_v).astype(np.uint16)
+            cv2.imwrite(str(output_path.resolve()), output)
         else:
-            output = output.clamp(0, 1)
-            v2.functional.to_pil_image(output).save(output_path)
+            # output = output.clamp(0, 1)
+            # v2.functional.to_pil_image(output).save(output_path)
+            raise NotImplementedError
