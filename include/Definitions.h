@@ -22,11 +22,11 @@ struct Image
 	cv::Mat descriptors;
 	cv::Mat R; // world to camera
 	cv::Mat t;
-	Eigen::Matrix3f K; // intrinsics matrix
-	// depth information
-	Eigen::MatrixXf depth;
-	float q; // shift factor
-	float w; // scale factor
+	Eigen::Matrix4f P;	   // depth information
+	Eigen::Matrix3f K;	   // intrinsics matrix
+	Eigen::MatrixXf depth; // depth information
+	float q;			   // shift factor
+	float w;			   // scale factor
 };
 
 struct ColoredPoint3f

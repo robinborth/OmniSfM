@@ -2,15 +2,15 @@
 
 #include "include/Settings.h"
 #include "include/Eigen.h"
+#include "include/Definitions.h"
 #include "include/ImageStorage.h"
 #include "include/SfMOptimizer.h"
 #include "include/PointCloud.h"
 #include "include/CorrespondenceSearch.h"
-#include "include/Utils.h"
 #include "include/SfMInitializer.h"
 #include "include/SimpleMesh.h"
 #include "include/Visualization.h"
-#include "include/Definitions.h"
+#include "include/Utils.h"
 #include <Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
 
@@ -166,31 +166,12 @@ int main()
 
     // Iterate over each pixel
     Visualization depthVis = Visualization("depthOutput");
-    std::vector<Eigen::Vector3f> depthPoints;
-    std::vector<Vector4uc> colorPoints;
-    for (int y = 0; y < img1->depth.rows(); ++y)
+    for (auto &img : imageStorage.images)
     {
-        for (int x = 0; x < img1->depth.cols(); ++x)
-        {
-            // extract the depth value
-            float depthValue = img1->depth(y, x);
-            float fX = img1->K(0, 0);
-            float fY = img1->K(1, 1);
-            float cX = img1->K(0, 2);
-            float cY = img1->K(1, 2);
-            Eigen::Vector3f depth = inverseProject(x, y, depthValue, fX, fY, cX, cY);
-
-            // extract the color value
-            auto color = img1->rgb.at<cv::Vec3b>(y, x);
-            Vector4uc c;
-            c << color[0], color[1], color[2], 255;
-
-            // update the vector
-            depthPoints.push_back(depth);
-            colorPoints.push_back(c);
-        }
+        std::cout << "Add image (" << img.id << ") to the visualiztion." << std::endl;
+        std::vector<ColoredPoint3f> coloredPoints = extractPointCloud(img);
+        depthVis.addVertex(coloredPoints);
     }
-    depthVis.addVertex(depthPoints, colorPoints);
     depthVis.writeAllMeshes();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;

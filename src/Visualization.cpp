@@ -231,6 +231,17 @@ void Visualization::addVertex(const std::vector<cv::Point3f> &points, const std:
         this->_pointCloudMesh.addVertex(point2Vertex);
     }
 }
+void Visualization::addVertex(const std::vector<ColoredPoint3f> &points)
+{
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        auto p = points[i];
+        Vertex point2Vertex = {
+            {p.point.x, p.point.y, p.point.z, 1.0f},
+            {p.color[0], p.color[1], p.color[2], 255}};
+        this->_pointCloudMesh.addVertex(point2Vertex);
+    }
+}
 void Visualization::addVertex(const std::vector<Eigen::Vector3f> &points, const std::vector<Vector4uc> &colors)
 {
     if (points.size() != colors.size())

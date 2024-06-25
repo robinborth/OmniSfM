@@ -92,7 +92,7 @@ bool ImageStorage::readIntrinsics()
         img->K << fX, 0.0f, cX,
             0.0f, fY, cY,
             0.0f, 0.0f, 1.0f;
-        }
+    }
     fileList.close();
     return true;
 }
@@ -113,6 +113,7 @@ bool ImageStorage::readExtrinsics()
     {
         int64_t id;
         fileList >> id;
+
         float tx;
         fileList >> tx;
         float ty;
@@ -128,6 +129,19 @@ bool ImageStorage::readExtrinsics()
         float qw;
         fileList >> qw;
 
+        Eigen::Vector3f translation = {tx, ty, tz};
+        Eigen::Quaternionf rot = {qx, qy, qz, qw};
+        Eigen::Matrix4f transf;
+        transf.setIdentity();
+        transf.block<3, 3>(0, 0) = rot.toRotationMatrix();
+        transf.block<3, 1>(0, 3) = translation;
+        if (rot.norm() == 0)
+        {
+            std::cout << "The norm is 0!" << std::endl;
+            return false;
+        }
+        transf = transf.inverse().eval();
+
         Image *img = findImage(id);
         if (!img) // not found create a new image
         {
@@ -137,6 +151,7 @@ bool ImageStorage::readExtrinsics()
         cv::Vec4f q(qx, qy, qz, qw);
         quaternionToRotationMatrix(q, img->R);
         img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
+        img->P = transf;
     }
     fileList.close();
     return true;
