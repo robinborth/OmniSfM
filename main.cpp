@@ -149,12 +149,13 @@ int main()
     // Evaluate the pose error
     evaluatePoseError(*img1, *img2, estimatedPose);
 
-        
 
     Visualization myVis = Visualization("myOutput");
     myVis.addVertex(points , colors);
     myVis.addCamera(cameraPoses);
     myVis.writeAllMeshes();
+
+    //imageStorage.processImagesForPointCloud();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;
 

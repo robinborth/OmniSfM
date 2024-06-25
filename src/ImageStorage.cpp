@@ -5,6 +5,7 @@
 #include "Settings.h"
 
 
+
 ImageStorage::ImageStorage(const Settings &settings)
 {
     this->datasetDir = settings.rootDir + "/data/" + settings.dataset + "/";
@@ -23,6 +24,84 @@ void ImageStorage::loadImages()
     // Optional: try to read the extrinsics but they don't need to be provided extrinsics.txt
     readExtrinsics();
 };
+
+void ImageStorage::createPointCloudFromImage(const Image& img, Visualization& visualization) {
+    cv::Mat depth = img.depth;
+    cv::Mat K = img.K;
+    cv::Mat R = img.R;
+    cv::Mat t = img.t;
+
+    if (img.depth.empty())
+        return;
+    if (img.K.empty() || img.R.empty() || img.t.empty())
+        return;
+
+    // Camera intrinsics
+    // focal length
+    float fx = K.at<float>(0, 0);
+    float fy = K.at<float>(1, 1);
+    // center point
+    float cx = K.at<float>(0, 2);
+    float cy = K.at<float>(1, 2);
+
+    std::vector<cv::Point3f> points3D;
+    std::vector<cv::Vec3b> colors;
+
+    for (size_t v = 0; v < depth.rows; ++v) {
+        for (size_t u = 0; u < depth.cols; ++u) {
+            float Z = depth.at<float>(v, u);
+            if (Z == 0) continue; // Skip invalid depth
+
+            // Pixel Coordinates to Camera Coordinates
+            float X = (u - cx) * Z / fx;
+            float Y = (v - cy) * Z / fy;
+            //std::cout << "pixel to camera coordinates" << std::endl;
+            // Camera Coordinates to World Coordinates
+            // Convert point to homogeneous coordinates
+            cv::Mat P_camera = (cv::Mat_<float>(3, 1) << X, Y, Z);
+            //std::cout << "homogenous coordinates" << std::endl;
+            //std::cout << P_camera.size  << " " << P_camera.type() << std::endl;
+            //std::cout << t.size << " " << t.type() << std::endl;
+            //std::cout << R.size << " " << R.type() << std::endl;
+            // Transform to world coordinates
+            cv::Mat P_world = R * P_camera + t;
+            //std::cout << "transform to world" << std::endl;
+            points3D.emplace_back(P_world.at<double>(0, 0), P_world.at<double>(1, 0), P_world.at<double>(2, 0));
+
+            // Add color
+            cv::Vec3b color = img.rgb.at<cv::Vec3b>(v, u);
+            //std::cout << "adding color" << std::endl;
+            colors.push_back(color);
+        }
+    }
+    //std::cout << "got points from depht map" << std::endl;
+    visualization.addVertex(points3D, colors);
+}
+
+void ImageStorage::processImagesForPointCloud() {
+    Visualization visualization("output_ImageStorage");
+    std::vector<Eigen::Matrix4f> cameraPoses;
+    std::vector<cv::Mat> intrinsics;
+
+    for (const auto& img : images) {
+        // Create point cloud from image
+        createPointCloudFromImage(img, visualization);
+
+        //std::cout << "adding camera to pc" << std::endl;
+        // Convert camera pose to Eigen format and add to the list
+        Eigen::Matrix4f eigenPose = SfMInitializer::combineRotationAndTranslationIntoMatrix(img.R, img.t);
+
+        /*std::cout << "converted to Eigen: " << eigenPose << std::endl;
+        std::cout << "img.R: " << img.R << std::endl << std::endl;
+        std::cout << "img.t: " << img.t << std::endl << std::endl;*/
+        cameraPoses.push_back(eigenPose);
+        intrinsics.push_back(img.K);
+    }
+    // Add camera poses to the visualization
+    visualization.addCamera(cameraPoses, intrinsics);
+    // Write the point cloud mesh and camera mesh to files
+    visualization.writeAllMeshes();
+}
 
 void ImageStorage::detectKeypoints()
 {
@@ -173,7 +252,7 @@ bool ImageStorage::readFileList(const std::string &type, std::vector<std::string
     return true;
 }
 
-bool ImageStorage::checkLoadImage(cv::Mat image)
+bool ImageStorage::checkLoadImage(cv::Mat &image)
 {
     if (image.empty())
     {
