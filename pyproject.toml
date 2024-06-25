@@ -16,6 +16,7 @@ dependencies = [
   "torchvision",
   "lightning",
   "jupyter",
+  "pillow_heif",
   "opencv-python",
 
   # test
