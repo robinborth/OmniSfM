@@ -16,6 +16,7 @@ dependencies = [
   "torchvision",
   "lightning",
   "jupyter",
+  "pillow_heif"
 
   # test
   "black",
