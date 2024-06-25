@@ -16,6 +16,7 @@ dependencies = [
   "torchvision",
   "lightning",
   "jupyter",
+  "opencv-python",
 
   # test
   "black",

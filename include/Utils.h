@@ -72,3 +72,10 @@ void savePointsToFile(const std::vector<cv::Point3f> &points3D, const std::strin
 
     outFile.close();
 }
+
+Vector3f inverseProject(float x, float y, float depth, float fX, float fY, float cX, float cY)
+{
+    float x_ = (x - cX) * depth / fX;
+    float y_ = (y - cY) * depth / fY;
+    return Vector3f(x_, y_, depth);
+}

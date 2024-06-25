@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include "Settings.h"
-
+#include <opencv2/core/eigen.hpp>
 
 ImageStorage::ImageStorage(const Settings &settings)
 {
@@ -51,7 +51,7 @@ void ImageStorage::drawKeypoints(int64_t id, std::string outputPath)
 Image *ImageStorage::findImage(int64_t id)
 {
     auto it = std::find_if(images.begin(), images.end(), [id](Image &a)
-                            { return a.id == id; });
+                           { return a.id == id; });
 
     if (it != images.end())
         return &(*it);
@@ -89,11 +89,10 @@ bool ImageStorage::readIntrinsics()
             std::cout << "At the point for attaching the intrinsics we need to have created the image with id:" << id << std::endl;
             return false;
         }
-        cv::Mat K_temp = (cv::Mat_<float>(3, 3) << fX, 0.0f, cX,
-                        0.0f, fY, cY,
-                        0.0f, 0.0f, 1.0f);
-        K_temp.convertTo(img->K, CV_64F); // Convert K_temp to double precision and store in img->K
-    }
+        img->K << fX, 0.0f, cX,
+            0.0f, fY, cY,
+            0.0f, 0.0f, 1.0f;
+        }
     fileList.close();
     return true;
 }
@@ -138,7 +137,6 @@ bool ImageStorage::readExtrinsics()
         cv::Vec4f q(qx, qy, qz, qw);
         quaternionToRotationMatrix(q, img->R);
         img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
-
     }
     fileList.close();
     return true;
@@ -185,7 +183,7 @@ bool ImageStorage::checkLoadImage(cv::Mat image)
 
 bool ImageStorage::loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
 {
-    for (size_t i = 0; i < 2; ++i) // ADJUST THIS TO LOAD ONLY A FEW IMAGES
+    for (size_t i = 0; i < filenames.size(); ++i) // change the data folder, e.g. freiburg_full
     {
         int64_t id = ids[i];
         std::cout << "Loading image with id " << id << std::endl;
@@ -208,8 +206,18 @@ bool ImageStorage::loadImages(const std::string &type, std::vector<std::string> 
         }
         if (type == "depth")
         {
-            cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_ANYDEPTH);
-            img->depth = depthImage;
+            cv::Mat depthImage = cv::imread(filenames[i], cv::IMREAD_UNCHANGED);
+            // Check if the image is loaded successfully
+            if (depthImage.empty())
+                std::cerr << "Error: Unable to open depth image!" << std::endl;
+
+            // Convert to float32 if the depth image is not already in this format
+            if (depthImage.type() != CV_32F)
+                depthImage.convertTo(depthImage, CV_32F, 1.0 / 65535.0);
+
+            // converts and stores the depth image in the image struct
+            cv::cv2eigen(depthImage, img->depth);
+
             if (!checkLoadImage(depthImage))
                 return false;
         }

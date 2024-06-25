@@ -26,5 +26,17 @@
       "console": "integratedTerminal",
       "justMyCode": false,
     },
+    {
+      "name": "Debug: Omnidata",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "scripts/omnidata.py",
+      "args": [
+        "--data=freiburg_small",
+        "--task=depth"
+      ],
+      "console": "integratedTerminal",
+      "justMyCode": false,
+    },
   ]
 }
