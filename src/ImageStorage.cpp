@@ -186,7 +186,7 @@ bool ImageStorage::readFileList(const std::string &type, std::vector<std::string
     return true;
 }
 
-bool ImageStorage::checkLoadImage(cv::Mat image)
+bool ImageStorage::checkLoadImage(cv::Mat &image)
 {
     if (image.empty())
     {

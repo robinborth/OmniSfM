@@ -10,7 +10,7 @@ Visualization::Visualization()
     _filename = "output";
 }
 
-Visualization::Visualization(const std::string filename)
+Visualization::Visualization(const std::string &filename)
 {
     _cameraMesh = SimpleMesh();
     _pointCloudMesh = SimpleMesh();
@@ -24,25 +24,20 @@ std::vector<Eigen::Vector3f> Visualization::generateSyntheticPointCloud()
     // Define the vertices of a cube
     float side = 1.0f;
     std::vector<Eigen::Vector3f> cubeVertices;
-    cubeVertices.push_back({-side, -side, -side});
-    cubeVertices.push_back({side, -side, -side});
-    cubeVertices.push_back({side, side, -side});
-    cubeVertices.push_back({-side, side, -side});
-    cubeVertices.push_back({-side, -side, side});
-    cubeVertices.push_back({side, -side, side});
-    cubeVertices.push_back({side, side, side});
-    cubeVertices.push_back({-side, side, side});
-    /*= {
-            {-side, -side, -side}, {side, -side, -side}, {side, side, -side}, {-side, side, -side},
-            {-side, -side, side}, {side, -side, side}, {side, side, side}, {-side, side, side}
-    };*/
+    cubeVertices.emplace_back(-side, -side, -side);
+    cubeVertices.emplace_back(side, -side, -side);
+    cubeVertices.emplace_back(side, side, -side);
+    cubeVertices.emplace_back(-side, side, -side);
+    cubeVertices.emplace_back(-side, -side, side);
+    cubeVertices.emplace_back(side, -side, side);
+    cubeVertices.emplace_back(side, side, side);
+    cubeVertices.emplace_back(-side, side, side);
 
     // Add the vertices to the point cloud
     for (const auto &vertex : cubeVertices)
     {
         points.push_back(vertex);
     }
-
     return points;
 }
 
@@ -53,20 +48,14 @@ std::vector<Eigen::Matrix4f> Visualization::generateSyntheticCameraPoses()
     std::vector<int> ints = {1, 2, 3};
     // Define camera poses around the cube
     std::vector<Eigen::Vector3f> positions;
-    positions.push_back({2.0f, 2.0f, 2.0f});
-    positions.push_back({-2.0f, 2.0f, 2.0f});
-    positions.push_back({2.0f, -2.0f, 2.0f});
-    positions.push_back({-2.0f, -2.0f, 2.0f});
-    positions.push_back({2.0f, 2.0f, -2.0f});
-    positions.push_back({-2.0f, 2.0f, -2.0f});
-    positions.push_back({2.0f, -2.0f, -2.0f});
-    positions.push_back({-2.0f, -2.0f, -2.0f});
-
-    /*{
-    {2.0f, 2.0f, 2.0f}, {-2.0f, 2.0f, 2.0f}, {2.0f, -2.0f, 2.0f}, {-2.0f, -2.0f, 2.0f},
-    {2.0f, 2.0f, -2.0f}, {-2.0f, 2.0f, -2.0f}, {2.0f, -2.0f, -2.0f}, {-2.0f, -2.0f, -2.0f}
-};
-*/
+    positions.emplace_back(2.0f, 2.0f, 2.0f);
+    positions.emplace_back(-2.0f, 2.0f, 2.0f);
+    positions.emplace_back(2.0f, -2.0f, 2.0f);
+    positions.emplace_back(-2.0f, -2.0f, 2.0f);
+    positions.emplace_back(2.0f, 2.0f, -2.0f);
+    positions.emplace_back(-2.0f, 2.0f, -2.0f);
+    positions.emplace_back(2.0f, -2.0f, -2.0f);
+    positions.emplace_back(-2.0f, -2.0f, -2.0f);
 
     for (const auto &pos : positions)
     {
@@ -84,7 +73,6 @@ std::vector<Eigen::Matrix4f> Visualization::generateSyntheticCameraPoses()
 
         cameraPoses.push_back(pose);
     }
-
     return cameraPoses;
 }
 
@@ -199,21 +187,20 @@ void Visualization::debugCorrespondenceMatching()
 
 int Visualization::writeCameraMesh()
 {
-    std::stringstream ss_camera;
-    ss_camera << _filename << "_cameras" << ".off";
-    std::cout << _filename << "_cameras" << ".off" << std::endl;
-    if (!this->_cameraMesh.writeMesh(ss_camera.str()))
+    std::string cameraFilename = _filename + "_cameras.off";
+    std::cout << cameraFilename << std::endl;
+    if (!_cameraMesh.writeMesh(cameraFilename))
     {
-        std::cout << "Failed to write mesh!\nCheck file path!" << std::endl;
+        std::cerr << "Failed to write camera mesh! Check file path!" << std::endl;
         return -1;
     }
     return 1; // Supress warning of no return
 }
 
-void Visualization::addVertex(const cv::Point3f &point)
+void Visualization::addVertex(const cv::Point3f &point, const cv::Vec3b &color)
 {
-    Vertex point2Vertex = {{point.x, point.y, point.z, 1.0f}, {255, 255, 255, 1}};
-    this->_pointCloudMesh.addVertex(point2Vertex);
+    Vertex point2Vertex = {{point.x, point.y, point.z, 1.0f}, {color[0], color[1], color[2], 255}};
+    _pointCloudMesh.addVertex(point2Vertex);
 }
 
 void Visualization::addVertex(const std::vector<cv::Point3f> &points, const std::vector<cv::Vec3b> &colors)
@@ -231,6 +218,7 @@ void Visualization::addVertex(const std::vector<cv::Point3f> &points, const std:
         this->_pointCloudMesh.addVertex(point2Vertex);
     }
 }
+
 void Visualization::addVertex(const std::vector<ColoredPoint3f> &points)
 {
     for (size_t i = 0; i < points.size(); ++i)
@@ -257,17 +245,57 @@ void Visualization::addVertex(const std::vector<Eigen::Vector3f> &points, const 
         this->_pointCloudMesh.addVertex(point2Vertex);
     }
 }
-
-void Visualization::addCamera(const Eigen::Matrix4f &cameraPose)
+// Function to generate color gradient
+Vector4uc Visualization::generateColor(int count, int max_count)
 {
-    this->_cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(cameraPose, 0.0005f), _cameraMesh, Matrix4f::Identity());
+    count++; // index starts at 0
+    if (count < 1)
+        count = 1;
+    if (count > max_count)
+        count = max_count;
+
+    float ratio = static_cast<float>(count - 1) / (max_count - 1);
+
+    unsigned char r = static_cast<unsigned char>((1.0f - ratio) * 255);
+    unsigned char g = static_cast<unsigned char>(ratio * 255);
+    unsigned char b = 0;
+
+    return Vector4uc(r, g, b, 255);
 }
 
-void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses)
+void Visualization::addCamera(const Eigen::Matrix4f &cameraPose, const float scale, const Vector4uc &color)
 {
-    for (const auto &pose : cameraPoses)
+
+    _cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(cameraPose, scale, color), _cameraMesh, Matrix4f::Identity());
+}
+void Visualization::addCamera(const Eigen::Matrix4f &cameraPose, const cv::Mat &intrinsic, const Vector4uc &color)
+{
+    double focalLength = intrinsic.at<double>(0, 0);
+    // Determine the scale based on the focal length
+    auto scale = static_cast<float>(focalLength * 0.00003);
+    // std::cout << scale << std::endl;
+    _cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(cameraPose, scale, color), _cameraMesh, Matrix4f::Identity());
+}
+
+void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, const float scale, const Vector4uc &color)
+{
+    for (size_t i = 0; i < cameraPoses.size(); i++)
     {
-        this->_cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(pose, 0.5f), _cameraMesh, Matrix4f::Identity());
+        addCamera(cameraPoses[i], scale, generateColor(i, cameraPoses.size()));
+    }
+}
+void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, const std::vector<cv::Mat> &intrinsics)
+{
+    // set default scale if no intrinsic
+    // use intrinsics focal length to determine scale of camera
+    if (cameraPoses.size() != intrinsics.size())
+    {
+        std::cerr << "Error: The number of cameras and intrinsics must match." << std::endl;
+        return;
+    }
+    for (size_t i = 0; i < cameraPoses.size(); i++)
+    {
+        addCamera(cameraPoses[i], intrinsics[i], generateColor(i, cameraPoses.size()));
     }
 }
 
@@ -288,21 +316,20 @@ void Visualization::fillCamerasWithDefaultValues()
     auto synthetic_cameraPoses = generateSyntheticCameraPoses();
     for (const auto &pose : synthetic_cameraPoses)
     {
-        _cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(pose, 0.0005f), _cameraMesh, Matrix4f::Identity());
+        addCamera(pose, 0.0005f);
     }
 }
 
 int Visualization::writePointCloudMesh()
 {
-    std::stringstream ss;
-    ss << _filename << "_pointCloud" << ".off";
-    std::cout << _filename << "_pointCloud" << ".off" << std::endl;
-    if (!(this->_pointCloudMesh.writeMesh(ss.str())))
+    std::string pointCloudFilename = _filename + "_pointCloud.off";
+    std::cout << pointCloudFilename << std::endl;
+    if (!_pointCloudMesh.writeMesh(pointCloudFilename))
     {
-        std::cout << "Failed to write mesh!\nCheck file path!" << std::endl;
+        std::cerr << "Failed to write point cloud mesh! Check file path!" << std::endl;
         return -1;
     }
-    return 1; // Supress warning of no return
+    return 1; // Suppress warning of no return
 }
 
 int Visualization::writeAllMeshes()
