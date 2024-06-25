@@ -2,12 +2,15 @@ from pillow_heif import register_heif_opener
 from PIL import Image
 from argparse import ArgumentParser
 import os
+from tqdm import tqdm
+from threading import Thread
 
 register_heif_opener()
 
-def convert_to_png(in_path: str, out_path: str):
+def convert_to_png(in_path: str, out_path: str, pbar: tqdm):
   img = Image.open(in_path)
   img.save(out_path)
+  pbar.update(1)
 
 def main():
   parser = ArgumentParser()
@@ -31,13 +34,16 @@ def main():
   rgb_dir = os.path.join(out_data, "rgb")
   os.makedirs(rgb_dir, exist_ok=True)
 
-  # copy and convert images
-  for index, file in enumerate(files):
-    img_path = os.path.join(rgb_dir, f"{index:05d}.png")
-    convert_to_png(os.path.join(in_data, file), img_path)
-
-  files = os.listdir(rgb_dir)
-  print(files)
+  with tqdm(total=len(files), desc="Copy and convert images") as pbar:
+    threads = set()
+    # copy and convert images
+    for index, file in enumerate(files):
+      img_path = os.path.join(rgb_dir, f"{index:05d}.png")
+      thread = Thread(target=convert_to_png, args=(os.path.join(in_data, file), img_path, pbar))
+      threads.add(thread)
+      thread.start()
+    for thread in threads:
+      thread.join()
 
 if __name__ == "__main__":
   main()
