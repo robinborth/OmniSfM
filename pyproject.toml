@@ -18,6 +18,7 @@ dependencies = [
   "jupyter",
   "pillow_heif",
   "opencv-python",
+  "matplotlib",
 
   # test
   "black",
