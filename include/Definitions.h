@@ -4,6 +4,10 @@
 #include <opencv2/core.hpp>
 #include "Eigen.h"
 
+typedef std::pair<size_t, size_t> ImagePair;
+typedef std::vector<cv::DMatch> MatchList;
+typedef std::map<ImagePair, MatchList> ImagePairMatches;
+
 struct Match
 {
 	int64_t sourceImageId;
@@ -12,6 +16,7 @@ struct Match
 	int targetKeyopintId;
 	float weight;
 };
+
 
 struct Image
 {
@@ -22,7 +27,7 @@ struct Image
 	cv::Mat descriptors;
 	cv::Mat R; // world to camera
 	cv::Mat t;
-	Eigen::Matrix4f P;	   // depth information
+	Eigen::Matrix4f P;	   // Eigen pose
 	Eigen::Matrix3f K;	   // intrinsics matrix
 	Eigen::MatrixXf depth; // depth information
 	float q;			   // shift factor

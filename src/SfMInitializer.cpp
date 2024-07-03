@@ -9,7 +9,6 @@ SfMInitializer::SfMInitializer() {}
 
 bool SfMInitializer::estimateInitialPose(const std::vector<cv::Point2f> &pts1, const std::vector<cv::Point2f> &pts2, const Eigen::Matrix3f &K, cv::Mat &R, cv::Mat &t)
 {
-
     cv::Mat k; // HACK convert to cv2
     cv::eigen2cv(K, k);
     cv::Mat E = cv::findEssentialMat(pts1, pts2, k, cv::RANSAC, 0.999, 1.0);
@@ -87,62 +86,106 @@ Eigen::Matrix4f SfMInitializer::combineRotationAndTranslationIntoMatrix(const cv
     return pose;
 }
 
-void SfMInitializer::runSfM(std::vector<Image> &images, std::vector<std::vector<Match>> &allMatches)
+void SfMInitializer::runSfM(std::vector<Image> &images, ImagePairMatches &allMatches)
 {
-    if (allMatches.size() > 0 && allMatches[0].size() >= 60)
+    std::cout << allMatches.size() << std::endl;
+    if (!allMatches.empty() && allMatches.begin()->second.size() >= 60) 
     {
+        const auto &firstPair = allMatches.begin()->first;
+        const auto &matches = allMatches.begin()->second;
+
         std::vector<cv::Point2f> pts1, pts2;
         std::vector<cv::Vec3b> colors1, colors2;
-        for (const auto &match : allMatches[0])
+        std::cout << "==> Extracting points for pose estimation between images " << firstPair.first << " and " << firstPair.second << "..." << std::endl;
+
+        for (const auto& match : matches) 
         {
-            cv::Point2f pt1 = images[0].keypoints[match.sourceKeypointId].pt;
-            cv::Point2f pt2 = images[1].keypoints[match.targetKeyopintId].pt;
+            cv::Point2f pt1 = images[firstPair.first].keypoints[match.queryIdx].pt;
+            cv::Point2f pt2 = images[firstPair.second].keypoints[match.trainIdx].pt;
             pts1.push_back(pt1);
             pts2.push_back(pt2);
-            colors1.push_back(images[0].rgb.at<cv::Vec3b>((int)pt1.y, (int)pt1.x));
-            colors2.push_back(images[1].rgb.at<cv::Vec3b>((int)pt2.y, (int)pt2.x));
+            colors1.push_back(images[firstPair.first].rgb.at<cv::Vec3b>((int)pt1.y, (int)pt1.x));
+            colors2.push_back(images[firstPair.second].rgb.at<cv::Vec3b>((int)pt2.y, (int)pt2.x));
         }
 
-        Eigen::Matrix3f &K = images[0].K;
-        std::cout << "==> Estimate initial pose ..." << std::endl;
-
-        // Estimate initial pose
+        Eigen::Matrix3f &K = images[firstPair.first].K;
         cv::Mat R, t;
-        if (estimateInitialPose(pts1, pts2, K, R, t))
+        if (estimateInitialPose(pts1, pts2, K, R, t)) 
         {
             std::cout << "==> Initial pose estimation successful." << std::endl;
             this->cameraPoses.push_back(combineRotationAndTranslationIntoMatrix(R, t)); // Save initial pose
-            // Triangulate points and store them
+            // Optional: Triangulate points and store them
             this->points3D = triangulatePointsWithColor(pts1, pts2, R, t, K, colors1, colors2);
             std::cout << "==> Triangulated " << points3D.size() << " points." << std::endl;
-            // Incremental pose estimation for other images
-            for (size_t i = 2; i < images.size(); ++i)
-            {
-                std::vector<cv::Point2f> imagePoints;
-                std::vector<cv::Point3f> objectPoints;
-                for (const auto &match : allMatches[i - 1])
-                {
-                    if (match.sourceKeypointId < points3D.size())
-                    {
-                        imagePoints.push_back(images[i].keypoints[match.targetKeyopintId].pt);
-                        objectPoints.push_back(points3D[match.sourceKeypointId].point);
-                    }
-                }
 
-                cv::Mat Ri, ti;
-                if (estimatePosePnP(objectPoints, imagePoints, images[i].K, Ri, ti))
-                {
-                    std::cout << "Pose estimation successful for image " << i << "." << std::endl;
-                    cameraPoses.push_back(combineRotationAndTranslationIntoMatrix(Ri, ti));
-                }
-                else
-                {
-                    std::cout << "Pose estimation failed for image " << i << "." << std::endl;
-                }
-            }
+            // Incremental pose estimation for other images
+            // for (size_t i = 2; i < images.size(); ++i)
+            // {
+            //     std::vector<cv::Point2f> imagePoints;
+            //     std::vector<cv::Point3f> objectPoints;
+            //     for (const auto &match : allMatches[i - 1])
+            //     {
+            //         if (match.sourceKeypointId < points3D.size())
+            //         {
+            //             imagePoints.push_back(images[i].keypoints[match.targetKeyopintId].pt);
+            //             objectPoints.push_back(points3D[match.sourceKeypointId].point);
+            //         }
+            //     }
+
+            //     cv::Mat Ri, ti;
+            //     if (estimatePosePnP(objectPoints, imagePoints, images[i].K, Ri, ti))
+            //     {
+            //         std::cout << "Pose estimation successful for image " << i << "." << std::endl;
+            //         cameraPoses.push_back(combineRotationAndTranslationIntoMatrix(Ri, ti));
+            //     }
+            //     else
+            //     {
+            //         std::cout << "Pose estimation failed for image " << i << "." << std::endl;
+            //     }
+            // }
 
             // bundle adjustment
         }
+    }
+}
+
+Eigen::Matrix4f SfMInitializer::debugRunSfm(std::vector<Image> &images, const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
+{
+    if (imgId1 >= images.size() || imgId2 >= images.size() || imgId1 == imgId2) {
+        std::cerr << "Invalid image indices provided. Indices must be within the range of the image vector and not equal." << std::endl;
+    }
+
+    // Check if there are enough matches to proceed
+    if (matchesForPair.size() < 60) {
+        std::cout << "Not enough matches to estimate a reliable pose (" << matchesForPair.size() << " matches found)." << std::endl;
+    }
+
+    // Extract points and colors for the matched keypoints
+    std::vector<cv::Point2f> pts1, pts2;
+    std::vector<cv::Vec3b> colors1, colors2;
+    for (const auto &match : matchesForPair) {
+        cv::Point2f pt1 = images[imgId1].keypoints[match.queryIdx].pt;
+        cv::Point2f pt2 = images[imgId2].keypoints[match.trainIdx].pt;
+        pts1.push_back(pt1);
+        pts2.push_back(pt2);
+        colors1.push_back(images[imgId1].rgb.at<cv::Vec3b>((int)pt1.y, (int)pt1.x));
+        colors2.push_back(images[imgId2].rgb.at<cv::Vec3b>((int)pt2.y, (int)pt2.x));
+    }
+    std::cout << "==> Extracted " << pts1.size() << " points for pose estimation." << std::endl;
+    std::cout << "==> Extracted " << pts2.size() << " points for pose estimation." << std::endl;
+
+    // Assuming the intrinsic matrix K is the same for both images
+    Eigen::Matrix3f &K = images[imgId1].K;
+    std::cout << "==> Estimate initial pose ..." << std::endl;
+
+    // Estimate initial pose using the extracted points
+    cv::Mat R, t;
+    if (estimateInitialPose(pts1, pts2, K, R, t)) {
+        std::cout << "Initial pose estimation successful." << std::endl;
+        return combineRotationAndTranslationIntoMatrix(R, t);
+    } else {
+        std::cout << "Failed to estimate initial pose." << std::endl;
+        return Eigen::Matrix4f::Identity();
     }
 }
 

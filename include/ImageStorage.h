@@ -41,8 +41,6 @@ private:
 
     bool loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids);
 
-    static void quaternionToRotationMatrix(const cv::Vec4f &q, cv::Mat &R);
-
     std::string datasetDir;
     cv::Ptr<cv::SIFT> sift;
     std::vector<std::string> filenameDepthImages;

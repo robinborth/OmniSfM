@@ -8,7 +8,7 @@
 ImageStorage::ImageStorage(const Settings &settings)
 {
     this->datasetDir = settings.rootDir + "/data/" + settings.dataset + "/";
-    this->sift = cv::SIFT::create();
+    this->sift = cv::SIFT::create(settings.siftNumFeatures);
 };
 
 void ImageStorage::loadImages()
@@ -140,6 +140,8 @@ bool ImageStorage::readExtrinsics()
             std::cout << "The norm is 0!" << std::endl;
             return false;
         }
+        // we need to invert the transformation matrix
+        // to go 
         transf = transf.inverse().eval();
 
         Image *img = findImage(id);
@@ -149,8 +151,16 @@ bool ImageStorage::readExtrinsics()
             return false;
         }
         cv::Vec4f q(qx, qy, qz, qw);
-        quaternionToRotationMatrix(q, img->R);
-        img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
+        //quaternionToRotationMatrix(q, img->R);
+        Eigen::Matrix3f r2 = transf.block<3, 3>(0, 0);
+        Eigen::Vector3f t2 = transf.block<3, 1>(0, 3);
+        cv::Mat R;
+        cv::Mat T;
+        cv::eigen2cv(r2, R);
+        cv::eigen2cv(t2, T);
+        img->t = T;
+        img->R = R;
+        //img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
         img->P = transf;
     }
     fileList.close();
@@ -242,24 +252,4 @@ bool ImageStorage::loadImages(const std::string &type, std::vector<std::string> 
     }
     std::cout << "Loaded images: " << images.size() << std::endl;
     return true;
-}
-
-void ImageStorage::quaternionToRotationMatrix(const cv::Vec4f &q, cv::Mat &R)
-{
-    // Ensure the rotation matrix is 3x3
-    R = cv::Mat::zeros(3, 3, CV_32F);
-
-    float qw = q[3], qx = q[0], qy = q[1], qz = q[2];
-
-    R.at<float>(0, 0) = 1 - 2 * qy * qy - 2 * qz * qz;
-    R.at<float>(0, 1) = 2 * qx * qy - 2 * qz * qw;
-    R.at<float>(0, 2) = 2 * qx * qz + 2 * qy * qw;
-
-    R.at<float>(1, 0) = 2 * qx * qy + 2 * qz * qw;
-    R.at<float>(1, 1) = 1 - 2 * qx * qx - 2 * qz * qz;
-    R.at<float>(1, 2) = 2 * qy * qz - 2 * qx * qw;
-
-    R.at<float>(2, 0) = 2 * qx * qz - 2 * qy * qw;
-    R.at<float>(2, 1) = 2 * qy * qz + 2 * qx * qw;
-    R.at<float>(2, 2) = 1 - 2 * qx * qx - 2 * qy * qy;
 }
