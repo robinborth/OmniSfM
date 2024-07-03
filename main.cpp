@@ -77,7 +77,7 @@ void evaluatePoseError(const Image &img1, const Image &img2, const Eigen::Matrix
 
 int main()
 {
-    // Loading the settings and the Images
+    /*// Loading the settings and the Images
     std::cout << "==> Load settings ..." << std::endl;
     Settings settings;
     std::cout << "==> Creating image store ..." << std::endl;
@@ -172,7 +172,23 @@ int main()
         std::vector<ColoredPoint3f> coloredPoints = extractPointCloud(img);
         depthVis.addVertex(coloredPoints);
     }
-    depthVis.writeAllMeshes();
+    depthVis.writeAllMeshes();*/
+
+    Visualization wireCamTest = Visualization("wireCam");
+    //adding camera with identity pose
+    wireCamTest.addCamera(Eigen::Matrix4f::Identity(), 1, {255,255,0,255});
+    wireCamTest.writeCameraMesh();
+
+    Visualization cylinderTest = Visualization("cylinderTest");
+    Matrix4f transform = Matrix4f::Identity();
+
+// Create the first cylinder
+    SimpleMesh z1 = SimpleMesh::cylinder({0,0,0}, {1,0,0}, 0.1f, 10, 10, {255,0,0,255}, transform);
+// Create the second cylinder
+    SimpleMesh z2 = SimpleMesh::cylinder({1,0,0}, {0,0,0}, 0.1f, 10, 10, {255,0,0,255}, transform);
+// Join the meshes
+    cylinderTest._cameraMesh = SimpleMesh::joinMeshes(z1, z2, Matrix4f::Identity());
+    cylinderTest.writeCameraMesh();
 
     // std::cout << "Point cloud saved to " << outputFilename << std::endl;
 

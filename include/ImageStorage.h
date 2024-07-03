@@ -19,9 +19,9 @@ public:
 
     void loadImages();
 
-    static Eigen::Matrix4f convertToEigen(const cv::Mat& R, const cv::Mat& t);
-    static void createPointCloudFromImage(const Image& img, Visualization& visualization);
-    void processImagesForPointCloud();
+    //static Eigen::Matrix4f convertToEigen(const cv::Mat& R, const cv::Mat& t);
+    //static void createPointCloudFromImage(const Image& img, Visualization& visualization);
+    //void processImagesForPointCloud();
 
 
     void detectKeypoints();

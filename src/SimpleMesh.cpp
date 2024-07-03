@@ -385,6 +385,68 @@ SimpleMesh SimpleMesh::camera(const Matrix4f &cameraPose, float scale, Vector4uc
 }
 
 /**
+ * Generates a camera object only consisting of cylinder with a given pose.
+ */
+
+SimpleMesh SimpleMesh::generateCylinderCamera(const Matrix4f &cameraPose, float scale, unsigned stacks, unsigned slices,
+                                              Vector4uc color) {
+    SimpleMesh mesh;
+    Matrix4f cameraToWorld = cameraPose.inverse();
+    // Define the canonical camera frustum vertices in the camera coordinate system
+    std::vector<Eigen::Vector3f> frustum;
+
+    frustum.emplace_back(0, 0, 0); // Camera center
+    frustum.emplace_back(scale, scale, scale * 2); // Top-right corner
+    frustum.emplace_back(scale, -scale, scale * 2); // Bottom-right corner
+    frustum.emplace_back(-scale, -scale, scale * 2); // Bottom-left corner
+    frustum.emplace_back(-scale, scale, scale * 2); // Top-left corner
+
+    // Transform the frustum vertices using the camera pose
+    for (auto &vertex : frustum) {
+        Eigen::Vector4f homogenousVertex(vertex[0], vertex[1], vertex[2], 1.0);
+        Eigen::Vector4f transformedVertex = cameraToWorld * homogenousVertex;
+        Vertex v;
+        v.position = transformedVertex;
+        v.color = color;
+        mesh.addVertex(v);
+
+        // Debug print
+        std::cout << "Original Vertex: " << vertex.transpose() << std::endl;
+        std::cout << "Transformed Vertex: " << transformedVertex.transpose() << std::endl;
+    }
+
+    // Define the edges of the frustum
+    std::vector<std::pair<int, int>> frustumEdges = {
+            {0, 1}, {0, 2}, {0, 3}, {0, 4}, // Edges from camera center to corners
+            {2, 1}, {3, 2}, {4, 3}, {1, 4}  // Edges between corners
+    };
+
+    // Add edges as cylinders
+    for (const auto &edge : frustumEdges) {
+        const auto &p0 = mesh.m_vertices[edge.first].position;
+        const auto &p1 = mesh.m_vertices[edge.second].position;
+
+        // Debug print
+        std::cout << "Edge from: " << p0.transpose() << " to " << p1.transpose() << std::endl;
+
+        // Check the distance between points to avoid zero-length cylinders
+        if ((p1.head<3>() - p0.head<3>()).norm() < 1e-6) {
+            std::cout << "Skipping zero-length cylinder" << std::endl;
+            continue;
+        }
+
+        SimpleMesh edgeCylinder = SimpleMesh::cylinder(p0.head<3>(), p1.head<3>(), scale * 0.01f, stacks, slices, color, Matrix4f::Identity());
+
+        // Debug print
+        std::cout << "Cylinder generated between: " << p0.head<3>().transpose() << " and " << p1.head<3>().transpose() << std::endl;
+
+        mesh = SimpleMesh::joinMeshes(mesh, edgeCylinder, Matrix4f::Identity());
+    }
+
+    return mesh;
+}
+
+/**
  * Generates a cylinder, ranging from point p0 to point p1.
  */
 SimpleMesh SimpleMesh::cylinder(const Vector3f &p0, const Vector3f &p1, float radius, unsigned stacks, unsigned slices, const Vector4uc color)
@@ -429,6 +491,51 @@ SimpleMesh SimpleMesh::cylinder(const Vector3f &p0, const Vector3f &p1, float ra
     transformation.block(0, 0, 3, 3) = face(Vector3f{0, 0, 1}, p1 - p0);
     transformation.block(0, 3, 3, 1) = p0;
     mesh.transform(transformation);
+
+    return mesh;
+}
+SimpleMesh SimpleMesh::cylinder(const Eigen::Vector3f &p0, const Eigen::Vector3f &p1, float radius, unsigned stacks, unsigned slices, Vector4uc color, const Matrix4f &transform) {
+    SimpleMesh mesh;
+
+    // Calculate the direction and length of the cylinder
+    Eigen::Vector3f direction = p1 - p0;
+    float length = direction.norm();
+    direction.normalize();
+
+    // Generate the base and top circles of the cylinder
+    for (unsigned i = 0; i <= stacks; ++i) {
+        float z = length * (float(i) / float(stacks)); // Current stack height
+
+        for (unsigned j = 0; j <= slices; ++j) {
+            float theta = 2.0f * M_PI * float(j) / float(slices); // Current angle
+
+            // Vertex position in local cylinder coordinates
+            Eigen::Vector3f vertexPos(radius * cosf(theta), radius * sinf(theta), z);
+
+            // Apply the transformation to the vertex position
+            Eigen::Vector4f homogenousVertex(vertexPos[0], vertexPos[1], vertexPos[2], 1.0);
+            Eigen::Vector4f transformedVertex = transform * homogenousVertex;
+
+            // Create the vertex
+            Vertex vertex;
+            vertex.position = transformedVertex;
+            vertex.color = color;
+
+            // Add the vertex to the mesh
+            mesh.addVertex(vertex);
+        }
+    }
+
+    // Generate faces (two triangles per quad)
+    for (unsigned i = 0; i < stacks; ++i) {
+        for (unsigned j = 0; j < slices; ++j) {
+            unsigned int first = (i * (slices + 1)) + j;
+            unsigned int second = first + slices + 1;
+
+            mesh.addFace(first, second, first + 1);
+            mesh.addFace(second, second + 1, first + 1);
+        }
+    }
 
     return mesh;
 }
