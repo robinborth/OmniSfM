@@ -99,11 +99,11 @@ void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix
     std::cout << R_rel  << std::endl;
     std::cout << t_rel  << std::endl;
     
-    myVis.addCamera(white, 0.0003, {255, 255, 255, 255});
-    myVis.addCamera(black, 0.0003, {0, 0, 0, 255});
-    myVis.addCamera(blue, 0.0003, {0, 0, 255, 255});
-    myVis.addCamera(yellow, 0.0003, {255, 255, 0, 255});
-    myVis.addCamera(red, 0.0003, {255, 0, 0, 255});
+    myVis.addCamera(white, 0.003, {255, 255, 255, 255});
+    // myVis.addCamera(black, 0.0003, {0, 0, 0, 255});
+    // myVis.addCamera(blue, 0.0003, {0, 0, 255, 255});
+    myVis.addCamera(yellow, 0.003, {255, 255, 0, 255});
+    // myVis.addCamera(red, 0.0003, {255, 0, 0, 255});
     myVis.writeAllMeshes();
 }
 
@@ -136,6 +136,11 @@ void initializePoseBwTwoImages(int id1, int id2, CorrespondenceSearch &search, I
     std::cout << "==> Found " << inlierMatches.size() << " inlier matches ..." << std::endl;
     SfMInitializer sfm;
     Eigen::Matrix4f cameraPose = sfm.debugRunSfm(imageStorage.images, matches, id1, id2);
+
+    const Eigen::Matrix4f& estimatedPose = cameraPose;
+
+    // // Evaluate the pose error
+    evaluatePoseError(imageStorage.images[id1], imageStorage.images[id2], estimatedPose);
     
 }
 
@@ -154,9 +159,9 @@ int main()
     CorrespondenceSearch search;
     SfMInitializer sfm;
     int id1 = 0;
-    int id2 = 1;
+    int id2 = 6;
     //visualizeCorrespondencesBwTwoImg(id1, id2, search, imageStorage);
-    //initializePoseBwTwoImages(id1, id2, search, imageStorage);
+    // initializePoseBwTwoImages(id1, id2, search, imageStorage);
     std::cout << "==> Find correspondences ..." << std::endl;
     auto allMatches = search.queryCorrespondences(imageStorage.images);
 
@@ -194,6 +199,16 @@ int main()
     myVis.addVertex(points , colors);
     myVis.addCamera(cameraPoses);
     myVis.writeAllMeshes();
+
+    // Iterate over each pixel
+    Visualization depthVis = Visualization("depthOutput");
+    for (auto &img : imageStorage.images)
+    {
+        std::cout << "Add image (" << img.id << ") to the visualiztion." << std::endl;
+        std::vector<ColoredPoint3f> coloredPoints = extractPointCloud(img);
+        depthVis.addVertex(coloredPoints);
+    }
+    depthVis.writeAllMeshes();
 
     return 0;
 }
