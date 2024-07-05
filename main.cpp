@@ -159,7 +159,7 @@ int main()
     CorrespondenceSearch search;
     SfMInitializer sfm;
     int id1 = 0;
-    int id2 = 6;
+    int id2 = 10;
     //visualizeCorrespondencesBwTwoImg(id1, id2, search, imageStorage);
     // initializePoseBwTwoImages(id1, id2, search, imageStorage);
     std::cout << "==> Find correspondences ..." << std::endl;

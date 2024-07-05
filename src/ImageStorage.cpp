@@ -82,7 +82,8 @@ bool ImageStorage::readIntrinsics()
         fileList >> cX;
         float cY;
         fileList >> cY;
-
+        if (id % 10 != 0)
+            continue;
         Image *img = findImage(id);
         if (!img) // not found create a new image
         {
@@ -129,6 +130,8 @@ bool ImageStorage::readExtrinsics()
         float qw;
         fileList >> qw;
 
+        if (id % 10 != 0)
+            continue;
         Eigen::Vector3f translation = {tx, ty, tz};
         Eigen::Quaternionf rot = {qx, qy, qz, qw};
         Eigen::Matrix4f transf;
@@ -151,7 +154,6 @@ bool ImageStorage::readExtrinsics()
             return false;
         }
         cv::Vec4f q(qx, qy, qz, qw);
-        //quaternionToRotationMatrix(q, img->R);
         Eigen::Matrix3f r2 = transf.block<3, 3>(0, 0);
         Eigen::Vector3f t2 = transf.block<3, 1>(0, 3);
         cv::Mat R;
@@ -160,7 +162,6 @@ bool ImageStorage::readExtrinsics()
         cv::eigen2cv(t2, T);
         img->t = T;
         img->R = R;
-        //img->t = (cv::Mat_<float>(3, 1) << tx, ty, tz);
         img->P = transf;
     }
     fileList.close();
@@ -208,7 +209,7 @@ bool ImageStorage::checkLoadImage(cv::Mat &image)
 
 bool ImageStorage::loadImages(const std::string &type, std::vector<std::string> &filenames, std::vector<int64_t> &ids)
 {
-    for (size_t i = 0; i < filenames.size(); ++i) // change the data folder, e.g. freiburg_full
+    for (size_t i = 0; i < filenames.size(); i += 10) // change the data folder, e.g. freiburg_full
     {
         int64_t id = ids[i];
         std::cout << "Loading image with id " << id << std::endl;
