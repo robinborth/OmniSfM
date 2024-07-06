@@ -3,10 +3,10 @@ The SfM project for the lecture 3D Scanning and Motion Capture.
 
 ## C++ dependencies using brew
 
-One way of installing c++ dependencies is via [homebrew](https://brew.sh/):
+One way of installing C++ dependencies is via [homebrew](https://brew.sh/):
 
 ```bash
-brew install cmake flann eigen opencv freeimage
+brew install cmake flann eigen opencv freeimage ceres-solver
 ```
 
 # Omnidata Model

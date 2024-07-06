@@ -14,6 +14,7 @@
 #include <Eigen/Dense>
 #include <opencv2/core/eigen.hpp>
 
+#include "include/BundleAdjustment.h"
 
 void computeRelativePose(const cv::Mat &R1, const cv::Mat &t1, const cv::Mat &R2, const cv::Mat &t2, cv::Mat &R_rel, cv::Mat &t_rel)
 {
