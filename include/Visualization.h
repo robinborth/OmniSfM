@@ -14,8 +14,10 @@ public:
     void addVertex(const std::vector<Eigen::Vector3f> &points, const std::vector<Vector4uc> &colors);
     void addVertex(const std::vector<ColoredPoint3f> &points);
     void addVertex(const cv::Point3f &point, const cv::Vec3b &color);
+    void addVertex(std::vector<Vertex> &verticies);
     void addCamera(const Eigen::Matrix4f &cameraPose, const float scale = 0.01f, const Vector4uc &color = {255, 0, 0, 255});
     void addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, const float scale = 0.01f, const Vector4uc &color = {255, 0, 0, 255});
+    void addCamera(const std::map<int, Eigen::Matrix4f> &cameraPoses, const float scale = 0.01f, const Vector4uc &color = {255, 0, 0, 255});
     void addCamera(const Eigen::Matrix4f &cameraPose, const cv::Mat &intrinsic, const Vector4uc &color = {255, 0, 0, 255});
     void addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, const std::vector<cv::Mat> &intrinsics);
 

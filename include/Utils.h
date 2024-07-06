@@ -5,7 +5,7 @@
 #include <opencv2/core/eigen.hpp>
 #include "Definitions.h"
 
-Vector4f image2camera(float x, float y, float depth, Eigen::Matrix3f &K)
+Eigen::Vector4f image2camera(float x, float y, float depth, Eigen::Matrix3f &K)
 {
     float fX = K(0, 0);
     float fY = K(1, 1);
@@ -13,7 +13,7 @@ Vector4f image2camera(float x, float y, float depth, Eigen::Matrix3f &K)
     float cY = K(1, 2);
     float x_ = (x - cX) * depth / fX;
     float y_ = (y - cY) * depth / fY;
-    return Vector4f(x_, y_, depth, 1.0);
+    return Eigen::Vector4f(x_, y_, depth, 1.0);
 }
 
 Eigen::Matrix4f camera2worldMatrix(const cv::Mat &R, const cv::Mat &t)
@@ -28,10 +28,10 @@ Eigen::Matrix4f camera2worldMatrix(const cv::Mat &R, const cv::Mat &t)
     return pose;
 }
 
-std::vector<ColoredPoint3f> extractPointCloud(Image &img)
+std::vector<Vertex> extractPointCloud(Image &img)
 {
     auto P = camera2worldMatrix(img.R, img.t);
-    std::vector<ColoredPoint3f> points;
+    std::vector<Vertex> points;
     for (int y = 0; y < img.depth.rows(); ++y)
     {
         for (int x = 0; x < img.depth.cols(); ++x)
@@ -46,15 +46,15 @@ std::vector<ColoredPoint3f> extractPointCloud(Image &img)
 
             // update the colord point but as RGB
             auto pixelBGR = img.rgb.at<cv::Vec3b>(y, x);
-            cv::Vec3b _color;
-            _color[0] = pixelBGR[2]; // Red channel
-            _color[1] = pixelBGR[1]; // Green channel
-            _color[2] = pixelBGR[0]; // Blue channel
+            Vector4uc _color = {
+                pixelBGR[2],  // Red
+                pixelBGR[1],  // Green
+                pixelBGR[0],  // Blue
+                255           // Alpha channel set to maximum
+            };
+            Vertex vertex{w_point, _color};
 
-            // convert to Point3f
-            cv::Point3f _point = {w_point[0], w_point[1], w_point[2]};
-
-            points.push_back(ColoredPoint3f{_point, _color});
+            points.push_back(vertex);
         }
     }
     return points;

@@ -203,6 +203,14 @@ void Visualization::addVertex(const cv::Point3f &point, const cv::Vec3b &color)
     _pointCloudMesh.addVertex(point2Vertex);
 }
 
+void Visualization::addVertex(std::vector<Vertex>& verticies)
+{
+    for (auto& vertex : verticies) 
+    {
+        this->_pointCloudMesh.addVertex(vertex);
+    }
+}
+
 void Visualization::addVertex(const std::vector<cv::Point3f> &points, const std::vector<cv::Vec3b> &colors)
 {
     if (points.size() != colors.size())
@@ -284,6 +292,18 @@ void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, c
         addCamera(cameraPoses[i], scale, generateColor(i, cameraPoses.size()));
     }
 }
+
+void Visualization::addCamera(const std::map<int, Eigen::Matrix4f> &cameraPoses, const float scale, const Vector4uc &color)
+{
+    int index = 0;
+    for (const auto& pair : cameraPoses) {
+        // `pair.first` is the key (camera ID), `pair.second` is the value (Matrix4f for the camera pose)
+        Vector4uc color = generateColor(index, cameraPoses.size());
+        addCamera(pair.second, scale, color);
+        index++;
+    }
+}
+
 void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, const std::vector<cv::Mat> &intrinsics)
 {
     // set default scale if no intrinsic

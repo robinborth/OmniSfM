@@ -51,7 +51,7 @@ double calculateTranslationError(const cv::Mat& t1, const cv::Mat& t2)
     return cv::norm((t1 - t2), cv::NORM_L2);
 }
 
-void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix4f& estimatedPose) 
+void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix4f& estimatedPose, SfMInitializer& sfm) 
 {
     // Compute the ground truth relative pose"
     cv::Mat R_rel, t_rel;
@@ -80,7 +80,6 @@ void evaluatePoseError(const Image& img1, const Image& img2, const Eigen::Matrix
     std::cout << "Translation Error: " << translation_error << std::endl;
 
     Visualization myVis = Visualization("myOutput2");
-    SfMInitializer sfm;
 
     cv::Mat w_r = cv::Mat::eye(3, 3, CV_32F);
     cv::Mat w_t = cv::Mat::zeros(3, 1, CV_32F);
@@ -134,13 +133,13 @@ void initializePoseBwTwoImages(int id1, int id2, CorrespondenceSearch &search, I
     std::cout << "==> Found " << matches.size() << " matches ..." << std::endl;
     auto inlierMatches = search.filterMatchesWithRANSAC(imageStorage.images[id1], imageStorage.images[id2], matches);
     std::cout << "==> Found " << inlierMatches.size() << " inlier matches ..." << std::endl;
-    SfMInitializer sfm;
-    Eigen::Matrix4f cameraPose = sfm.debugRunSfm(imageStorage.images, matches, id1, id2);
+    SfMInitializer sfm = SfMInitializer(imageStorage.images);
+    Eigen::Matrix4f cameraPose = sfm.debugRunSfm(matches, id1, id2);
 
     const Eigen::Matrix4f& estimatedPose = cameraPose;
 
     // // Evaluate the pose error
-    evaluatePoseError(imageStorage.images[id1], imageStorage.images[id2], estimatedPose);
+    evaluatePoseError(imageStorage.images[id1], imageStorage.images[id2], estimatedPose, sfm);
     
 }
 
@@ -157,58 +156,53 @@ int main()
     std::cout << "==> Detect keypoints ..." << std::endl;
     imageStorage.detectKeypoints();
     CorrespondenceSearch search;
-    SfMInitializer sfm;
-    int id1 = 0;
-    int id2 = 10;
+    // int id1 = 0;
+    // int id2 = 100;
     //visualizeCorrespondencesBwTwoImg(id1, id2, search, imageStorage);
     // initializePoseBwTwoImages(id1, id2, search, imageStorage);
     std::cout << "==> Find correspondences ..." << std::endl;
     auto allMatches = search.queryCorrespondences(imageStorage.images);
 
     // Run Structure from Motion
-    sfm.runSfM(imageStorage.images, allMatches);
-    const std::vector<ColoredPoint3f> &points3D = sfm.getPoints3D();
-    const auto &cameraPoses = sfm.getCameraPoses();
-
-    std::vector<cv::Point3f> points;
-    std::vector<cv::Vec3b> colors;
-
-    for (const auto& coloredPoint : points3D) {
-        points.push_back(coloredPoint.point);
-        colors.push_back(coloredPoint.color);
-    }
-
-    Image* img1 = imageStorage.findImage(id1);
-    Image* img2 = imageStorage.findImage(id2);
-
-    if (!img1 || !img2) {
-        std::cerr << "Failed to find one of the images." << std::endl;
-        return -1;
-    }
-    if (cameraPoses.empty()) {
-        std::cerr << "No estimated poses found." << std::endl;
-        return -1;
-    }
-    const Eigen::Matrix4f& estimatedPose = cameraPoses[0];
-
-    // Evaluate the pose error
-    evaluatePoseError(*img1, *img2, estimatedPose);
-
+    SfMInitializer sfm = SfMInitializer(imageStorage.images);
+    sfm.runSfM(allMatches);
+    std::vector<Vertex> points3D = sfm.getPoints3D();
+    std::map<int, Eigen::Matrix4f> cameraPoses = sfm.getCameraPoses();
+    std::cout << cameraPoses.size() << std::endl;
+    std::cout << points3D.size() << std::endl;
 
     Visualization myVis = Visualization("myOutput");
-    myVis.addVertex(points , colors);
+    myVis.addVertex(points3D);
     myVis.addCamera(cameraPoses);
     myVis.writeAllMeshes();
 
-    // Iterate over each pixel
+    // // // Iterate over each pixel
     Visualization depthVis = Visualization("depthOutput");
     for (auto &img : imageStorage.images)
     {
         std::cout << "Add image (" << img.id << ") to the visualiztion." << std::endl;
-        std::vector<ColoredPoint3f> coloredPoints = extractPointCloud(img);
-        depthVis.addVertex(coloredPoints);
+        std::vector<Vertex> verticies = extractPointCloud(img);
+        depthVis.addVertex(verticies);
     }
     depthVis.writeAllMeshes();
+
+    // Image* img1 = imageStorage.findImage(id1);
+    // Image* img2 = imageStorage.findImage(id2);
+
+    // if (!img1 || !img2) {
+    //     std::cerr << "Failed to find one of the images." << std::endl;
+    //     return -1;
+    // }
+    // if (cameraPoses.empty()) {
+    //     std::cerr << "No estimated poses found." << std::endl;
+    //     return -1;
+    // }
+    // const Eigen::Matrix4f& estimatedPose = cameraPoses[0];
+
+    // // Evaluate the pose error
+    // evaluatePoseError(*img1, *img2, estimatedPose, sfm);
+
+
 
     return 0;
 }

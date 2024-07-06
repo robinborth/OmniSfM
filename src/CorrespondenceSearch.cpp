@@ -12,7 +12,9 @@ std::vector<cv::DMatch> CorrespondenceSearch::queryMatches(const Image& sourceIm
     cv::Ptr<cv::DescriptorMatcher> matcher = cv::DescriptorMatcher::create("FlannBased");
     matcher->knnMatch(sourceImage.descriptors, targetImage.descriptors, matches, 2);
     vector<cv::DMatch> good_matches;
-    for (size_t i = 0; i < matches.size(); i++) {
+    for (size_t i = 0; i < matches.size(); i++) 
+    {
+        // Lowe's ratio test
         if (matches[i][0].distance < 0.5f * matches[i][1].distance) 
         {
             good_matches.push_back(matches[i][0]);
