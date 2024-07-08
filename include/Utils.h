@@ -30,7 +30,6 @@ Eigen::Matrix4f camera2worldMatrix(const cv::Mat &R, const cv::Mat &t)
 
 std::vector<Vertex> extractPointCloud(Image &img)
 {
-    auto P = camera2worldMatrix(img.R, img.t);
     std::vector<Vertex> points;
     for (int y = 0; y < img.depth.rows(); ++y)
     {
@@ -42,15 +41,15 @@ std::vector<Vertex> extractPointCloud(Image &img)
 
             // image to camera transformation
             Eigen::Vector4f c_point = image2camera(x, y, depth, img.K);
-            Eigen::Vector4f w_point = P * c_point;
+            Eigen::Vector4f w_point = img.P.inverse() * c_point;
 
             // update the colord point but as RGB
             auto pixelBGR = img.rgb.at<cv::Vec3b>(y, x);
             Vector4uc _color = {
-                pixelBGR[2],  // Red
-                pixelBGR[1],  // Green
-                pixelBGR[0],  // Blue
-                255           // Alpha channel set to maximum
+                pixelBGR[2], // Red
+                pixelBGR[1], // Green
+                pixelBGR[0], // Blue
+                255          // Alpha channel set to maximum
             };
             Vertex vertex{w_point, _color};
 

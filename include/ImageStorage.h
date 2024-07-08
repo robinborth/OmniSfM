@@ -5,10 +5,7 @@
 #include "Definitions.h"
 #include "Settings.h"
 #include "Visualization.h"
-#include "SfMInitializer.h"
 #include <opencv2/opencv.hpp>
-
-
 
 class ImageStorage
 {
@@ -19,10 +16,9 @@ public:
 
     void loadImages();
 
-    static Eigen::Matrix4f convertToEigen(const cv::Mat& R, const cv::Mat& t);
-    static void createPointCloudFromImage(const Image& img, Visualization& visualization);
+    static Eigen::Matrix4f convertToEigen(const cv::Mat &R, const cv::Mat &t);
+    static void createPointCloudFromImage(const Image &img, Visualization &visualization);
     void processImagesForPointCloud();
-
 
     void detectKeypoints();
 

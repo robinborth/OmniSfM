@@ -362,7 +362,7 @@ SimpleMesh SimpleMesh::camera(const Matrix4f &cameraPose, float scale, Vector4uc
     Matrix4f cameraToWorld = cameraPose.inverse();
 
     // These are precomputed values for sphere aproximation.
-    std::vector<double> vertexComponents = {25, 25, 0, -50, 50, 100, 49.99986, 49.9922, 99.99993, -24.99998, 25.00426, 0.005185,
+    std::vector<double> vertexComponents = {50, 25, 0, -50, 50, 100, 49.99986, 49.9922, 99.99993, -24.99998, 25.00426, 0.005185,
                                             25.00261, -25.00023, 0.004757, 49.99226, -49.99986, 99.99997, -50, -50, 100, -25.00449, -25.00492, 0.019877};
     const std::vector<unsigned> faceIndices = {1, 2, 3, 2, 0, 3, 2, 5, 4, 4, 0, 2, 5, 6, 7, 7, 4, 5, 6, 1, 7, 1, 3, 7, 3, 0, 4, 7, 3, 4, 5, 2, 1, 5, 1, 6};
 
