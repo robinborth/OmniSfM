@@ -75,10 +75,10 @@ std::vector<Vertex> SfMInitializer::triangulatePointsWithColor(const std::vector
     {
         cv::Vec4d point = points4D.col(i);
         point /= point[3]; // Normalize to convert from homogeneous to Cartesian coordinates
+        // HACK camera system definition
         point[0] = -point[0];
         point[1] = -point[1];
         point[2] = -point[2];
-        std::cout << point << std::endl;
 
         // Average the colors from both images
         Vector4uc color(
@@ -159,6 +159,62 @@ std::tuple<std::vector<cv::Point2f>, std::vector<cv::Point2f>, std::vector<cv::V
     return {pts1, pts2, colors1, colors2};
 }
 
+void SfMInitializer::solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> points2D, std::vector<Vertex> points3D)
+{
+
+    // compute the z statistics from the gt points
+    Eigen::VectorXf p(points3D.size());
+    for (size_t i = 0; i < points3D.size(); ++i)
+    {
+        p(i) = points3D[i].position[2];
+    }
+    float mean = p.mean();
+    float variance = (p.array() - mean).square().sum() / (p.size() - 1);
+    float stddev = std::sqrt(variance);
+    std::cout << mean << " " << variance << " " << stddev << std::endl;
+
+    // Optimze for the scale and translation in the depth maps
+    auto img = imageStorage.images[imgIdx];
+    std::vector<float> gtDepths, imgDepths;
+    for (auto i = 0; i < points3D.size(); ++i)
+    {
+        auto imgDepth = img.depth((int)points2D[i].y, (int)points2D[i].x);
+        auto gtDepth = points3D[i].position[2];
+
+        float gt_std = std::abs(gtDepth - mean) / stddev;
+        if (gt_std > 1.0) // if the z-value is further away then 1 std this could be an outlier
+        {
+            // std::cout << "Skip: " << gtDepth << " " << imgDepth << std::endl;
+            continue;
+        }
+
+        imgDepths.push_back(imgDepth);
+        gtDepths.push_back(gtDepth); // z-value
+        // if (i < 5)                   // debugging
+        //     std::cout << gtDepth << " " << imgDepth << std::endl;
+    }
+
+    // solve for scale and
+    const unsigned nPoints = imgDepths.size();
+    MatrixXf A(nPoints, 2);
+    VectorXf b(nPoints);
+    for (int i = 0; i < nPoints; ++i)
+    {
+        A(i, 0) = imgDepths[i];
+        A(i, 1) = 1.0;
+        b(i) = gtDepths[i];
+    }
+    Matrix2f ATA = A.transpose() * A;
+    Vector2f ATb = A.transpose() * b;
+    JacobiSVD<Matrix2f> svd(ATA, ComputeFullU | ComputeFullV);
+    VectorXf solution = svd.solve(ATb);
+    float w = solution[0]; // scale
+    float q = solution[1]; // shift
+    imageStorage.images[imgIdx].w = w;
+    imageStorage.images[imgIdx].q = q;
+    std::cout << "w: " << w << " q: " << q << std::endl;
+}
+
 void SfMInitializer::runSfM(ImagePairMatches &allMatches)
 {
     if (allMatches.empty())
@@ -166,36 +222,37 @@ void SfMInitializer::runSfM(ImagePairMatches &allMatches)
         std::cout << "No matches to process." << std::endl;
         return;
     }
+
+    // First 2 images estimate the Pose between them!
     const auto &pair = allMatches.begin()->first;
     const auto &matches = allMatches.begin()->second;
     imageStorage.images[pair.first].P = Eigen::Matrix4f::Identity(); // world2camera
-
     std::cout << pair.first << " " << pair.second << " " << matches.size() << std::endl;
     if (matches.size() < 60)
     {
         std::cout << "Not enough matches for image pair (" << pair.first << ", " << pair.second << ")." << std::endl;
         return;
     }
-
     auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matches, pair.first, pair.second);
 
+    std::vector<Vertex> points3D;
     cv::Mat R, t;
     if (estimateInitialPose(pts1, pts2, R, t)) // from pts1 -> pts2 (note that pts1 is world for first frame)
     {
         imageStorage.images[pair.second].P = combineRotationAndTranslationIntoMatrix(R, t);
         auto P1 = world2Image(imageStorage.images[pair.first]);
         auto P2 = world2Image(imageStorage.images[pair.second]);
-        std::vector<Vertex> points3D = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
-        std::cout << "Essential" << std::endl;
-        std::cout << P1 << std::endl;
-        std::cout << P2 << std::endl;
-        // std::cout << imageStorage.images[pair.second].P << std::endl;
-        // std::cout << imageStorage.images[pair.second].P.inverse() << std::endl;
+        points3D = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
     }
     else
     {
         std::cout << "Failed to estimate pose for image pair (" << pair.first << ", " << pair.second << ")." << std::endl;
     }
+
+    std::cout << "Solve depth map for image: " << pair.first << std::endl;
+    solveDepthMaps(pair.first, pts1, points3D);
+    std::cout << "Solve depth map for image: " << pair.second << std::endl;
+    solveDepthMaps(pair.second, pts1, points3D);
 }
 
 const std::vector<Vertex> &SfMInitializer::getPoints3D() const { return points3D; }
@@ -205,7 +262,6 @@ const std::vector<Eigen::Matrix4f> SfMInitializer::getCameraPoses() const
     for (auto img : imageStorage.images)
     {
         poses.push_back(img.P);
-        // std::cout << img.P << std::endl;
     }
     return poses;
 }
