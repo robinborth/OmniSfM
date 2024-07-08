@@ -9,9 +9,10 @@ class SfMInitializer
 public:
     SfMInitializer(ImageStorage &imageStorage);
 
+    std::vector<Eigen::Vector4f> vertex2Camera(size_t imgIdx, std::vector<Vertex> points3D);
     void runSfM(ImagePairMatches &allMatches);
     const std::vector<Vertex> &getPoints3D() const;
-    void solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> points2D, std::vector<Vertex> points3D);
+    void solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> points2D, std::vector<Eigen::Vector4f> points3D);
     cv::Mat getIntrinsic();
     cv::Mat world2Image(Image img);
     const std::vector<Eigen::Matrix4f> getCameraPoses() const;

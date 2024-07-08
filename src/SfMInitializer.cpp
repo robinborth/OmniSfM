@@ -159,14 +159,26 @@ std::tuple<std::vector<cv::Point2f>, std::vector<cv::Point2f>, std::vector<cv::V
     return {pts1, pts2, colors1, colors2};
 }
 
-void SfMInitializer::solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> points2D, std::vector<Vertex> points3D)
+std::vector<Eigen::Vector4f> SfMInitializer::vertex2Camera(size_t imgIdx, std::vector<Vertex> points3D)
+{
+    std::vector<Eigen::Vector4f> points;
+    auto img = imageStorage.images[imgIdx];
+    for (auto i = 0; i < points3D.size(); ++i)
+    {
+        auto p = img.P * points3D[i].position;
+        points.push_back(p);
+    }
+    return points;
+}
+
+void SfMInitializer::solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> points2D, std::vector<Eigen::Vector4f> points3D)
 {
 
     // compute the z statistics from the gt points
     Eigen::VectorXf p(points3D.size());
     for (size_t i = 0; i < points3D.size(); ++i)
     {
-        p(i) = points3D[i].position[2];
+        p(i) = points3D[i][2];
     }
     float mean = p.mean();
     float variance = (p.array() - mean).square().sum() / (p.size() - 1);
@@ -179,19 +191,19 @@ void SfMInitializer::solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> poin
     for (auto i = 0; i < points3D.size(); ++i)
     {
         auto imgDepth = img.depth((int)points2D[i].y, (int)points2D[i].x);
-        auto gtDepth = points3D[i].position[2];
+        auto gtDepth = points3D[i][2];
 
         float gt_std = std::abs(gtDepth - mean) / stddev;
         if (gt_std > 1.0) // if the z-value is further away then 1 std this could be an outlier
         {
-            // std::cout << "Skip: " << gtDepth << " " << imgDepth << std::endl;
+            std::cout << "Skip: " << gtDepth << " " << imgDepth << std::endl;
             continue;
         }
 
         imgDepths.push_back(imgDepth);
         gtDepths.push_back(gtDepth); // z-value
-        // if (i < 5)                   // debugging
-        //     std::cout << gtDepth << " " << imgDepth << std::endl;
+        if (i < 5)                   // debugging
+            std::cout << gtDepth << " " << imgDepth << " " << points3D[i] << std::endl;
     }
 
     // solve for scale and
@@ -250,9 +262,11 @@ void SfMInitializer::runSfM(ImagePairMatches &allMatches)
     }
 
     std::cout << "Solve depth map for image: " << pair.first << std::endl;
-    solveDepthMaps(pair.first, pts1, points3D);
+    auto c1 = vertex2Camera(pair.first, points3D);
+    solveDepthMaps(pair.first, pts1, c1);
     std::cout << "Solve depth map for image: " << pair.second << std::endl;
-    solveDepthMaps(pair.second, pts1, points3D);
+    auto c2 = vertex2Camera(pair.second, points3D);
+    solveDepthMaps(pair.second, pts2, c2);
 }
 
 const std::vector<Vertex> &SfMInitializer::getPoints3D() const { return points3D; }
