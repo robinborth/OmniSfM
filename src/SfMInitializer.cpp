@@ -75,9 +75,6 @@ std::vector<Vertex> SfMInitializer::triangulatePointsWithColor(const std::vector
     {
         cv::Vec4d point = points4D.col(i);
         point /= point[3]; // Normalize to convert from homogeneous to Cartesian coordinates
-        // HACK camera system definition
-        point[0] = -point[0];
-        point[1] = -point[1];
         point[2] = -point[2];
 
         // Average the colors from both images
