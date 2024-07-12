@@ -12,7 +12,6 @@ public:
     void addVertex(const cv::Point3f &point);
     void addVertex(const std::vector<cv::Point3f> &points, const std::vector<cv::Vec3b> &colors);
     void addVertex(const std::vector<Eigen::Vector3f> &points, const std::vector<Vector4uc> &colors);
-    void addVertex(const std::vector<ColoredPoint3f> &points);
     void addVertex(const cv::Point3f &point, const cv::Vec3b &color);
     void addVertex(std::vector<Vertex> &verticies);
     void addCamera(const Eigen::Matrix4f &cameraPose, const float scale = 0.01f, const Vector4uc &color = {255, 0, 0, 255});

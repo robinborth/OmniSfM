@@ -34,11 +34,6 @@ struct Image
 	float w;			   // scale factor
 };
 
-struct ColoredPoint3f
-{
-	cv::Point3f point;
-	cv::Vec3b color;
-};
 
 struct Vertex
 {
@@ -59,4 +54,24 @@ struct Triangle
 	Triangle() : idx0{0}, idx1{0}, idx2{0} {}
 
 	Triangle(unsigned int _idx0, unsigned int _idx1, unsigned int _idx2) : idx0(_idx0), idx1(_idx1), idx2(_idx2) {}
+};
+// Structure for 3D points
+struct Point3D {
+    Eigen::Vector4f position; // 3D position in world coordinates
+    std::vector<std::pair<int, int>> observations; // (Node index, KeyPoint index)
+};
+
+// Node structure for each image
+struct Node {
+	int id;
+    Eigen::Matrix4f pose; // 4x4 pose matrix [R|t]
+    std::vector<cv::KeyPoint> keypoints;
+    Eigen::Matrix3f intrinsics;
+};
+
+// Edge structure for matches between pairs of images
+struct Edge {
+    int node1_index;
+    int node2_index;
+    MatchList matches; // cv::DMatch list for matched keypoints
 };

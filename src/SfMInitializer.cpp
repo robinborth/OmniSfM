@@ -6,7 +6,7 @@
 #include <limits>
 #include "Eigen.h"
 
-SfMInitializer::SfMInitializer(ImageStorage &imageStorage) : imageStorage(imageStorage) {}
+SfMInitializer::SfMInitializer(ImageStorage &imageStorage, SfMGraph &graph) : imageStorage(imageStorage), graph(graph) {}
 
 cv::Mat SfMInitializer::getIntrinsic()
 {
@@ -50,13 +50,11 @@ cv::Mat SfMInitializer::world2Image(Image img)
     cv::Mat K;
     cv::eigen2cv(img.K, K);
 
-    auto p = img.P.topRows<3>();
+    Eigen::Matrix<float, 3, 4> p = img.P.topRows<3>();
     cv::Mat P(3, 4, CV_32F);
 
     // Copy data from Eigen matrix to cv::Mat
-    for (int i = 0; i < p.rows(); ++i)
-        for (int j = 0; j < p.cols(); ++j)
-            P.at<float>(i, j) = p(i, j);
+    cv::eigen2cv(p, P);
 
     return K * P;
 }
@@ -76,9 +74,9 @@ std::vector<Vertex> SfMInitializer::triangulatePointsWithColor(const std::vector
         cv::Vec4d point = points4D.col(i);
         point /= point[3]; // Normalize to convert from homogeneous to Cartesian coordinates
         // HACK camera system definition
-        point[0] = -point[0];
-        point[1] = -point[1];
-        point[2] = -point[2];
+        // point[0] = -point[0];
+        // point[1] = -point[1];
+        // point[2] = -point[2];
 
         // Average the colors from both images
         Vector4uc color(
@@ -269,13 +267,74 @@ void SfMInitializer::runSfM(ImagePairMatches &allMatches)
     solveDepthMaps(pair.second, pts2, c2);
 }
 
+void SfMInitializer::updateGraph(const std::vector<Vertex> &points3D, const std::vector<cv::DMatch> &matches, Image *img1, Image *img2)
+{
+    Node node1 = {(int)img1->id, img1->P, img1->keypoints, img1->K};
+    Node node2 = {(int)img2->id, img2->P, img2->keypoints, img2->K};
+    int nodeIndex1 = graph.addNode(node1);
+    int nodeIndex2 = graph.addNode(node2);
+
+    for (size_t i = 0; i < points3D.size(); ++i)
+    {
+        Point3D p3d;
+        p3d.position = Eigen::Vector4f(points3D[i].position[0], points3D[i].position[1], points3D[i].position[2], 1.0f);
+        p3d.observations.push_back(std::make_pair(img1->id, matches[i].queryIdx)); // source image and keypoint
+        p3d.observations.push_back(std::make_pair(img2->id, matches[i].trainIdx)); // target image and keypoint
+        graph.addPoint3D(p3d);
+    }
+    // Add edge to the graph representing the matches between these two images
+    Edge edge = {nodeIndex1, nodeIndex2, matches};
+    graph.addEdge(edge);
+}
+
+void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
+{
+    if (imgId1 >= this->imageStorage.images.size() || imgId2 >= this->imageStorage.images.size() || imgId1 == imgId2) {
+        std::cerr << "Invalid image indices provided. Indices must be within the range of the image vector and not equal." << std::endl;
+    }
+    Image *sourceImg = this->imageStorage.findImage(imgId1);
+    Image *targetImg = this->imageStorage.findImage(imgId2);
+
+    // Check if there are enough matches to proceed
+    if (matchesForPair.size() < 60) {
+        std::cout << "Not enough matches to estimate a reliable pose (" << matchesForPair.size() << " matches found)." << std::endl;
+    }
+
+    // Extract points and colors for the matched keypoints
+    auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matchesForPair, imgId1, imgId2);
+    imageStorage.images[imgId1].P = Eigen::Matrix4f::Identity(); // world2camera
+    poses.push_back(imageStorage.images[imgId1].P);
+
+    std::cout << "==> Extracted " << pts1.size() << " points for pose estimation." << std::endl;
+    std::cout << "==> Extracted " << pts2.size() << " points for pose estimation." << std::endl;
+
+    std::vector<Vertex> points3D;
+    cv::Mat R, t;
+    if (estimateInitialPose(pts1, pts2, R, t)) // from pts1 -> pts2 (note that pts1 is world for first frame)
+    {
+        imageStorage.images[imgId2].P = combineRotationAndTranslationIntoMatrix(R, t);
+        poses.push_back(imageStorage.images[imgId2].P);
+        auto P1 = world2Image(*sourceImg);
+        auto P2 = world2Image(*targetImg);
+        points3D = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
+        updateGraph(points3D, matchesForPair, sourceImg, targetImg);
+    }
+    else
+    {
+        std::cout << "Failed to estimate pose for image pair (" << imgId1 << ", " << imgId2 << ")." << std::endl;
+    }
+
+    std::cout << "Solve depth map for image: " << imgId1 << std::endl;
+    auto c1 = vertex2Camera(imgId1, points3D);
+    solveDepthMaps(imgId1, pts1, c1);
+    std::cout << "Solve depth map for image: " << imgId2 << std::endl;
+    auto c2 = vertex2Camera(imgId2, points3D);
+    solveDepthMaps(imgId2, pts2, c2);
+}
+
+
 const std::vector<Vertex> &SfMInitializer::getPoints3D() const { return points3D; }
 const std::vector<Eigen::Matrix4f> SfMInitializer::getCameraPoses() const
 {
-    std::vector<Eigen::Matrix4f> poses;
-    for (auto img : imageStorage.images)
-    {
-        poses.push_back(img.P);
-    }
     return poses;
 }

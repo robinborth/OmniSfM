@@ -6,6 +6,7 @@
 #include "Definitions.h"
 #include "Visualization.h"
 #include "SfMInitializer.h"
+#include "SfmGraph.h"
 
 void computeRelativePose(const cv::Mat &R1, const cv::Mat &t1, const cv::Mat &R2, const cv::Mat &t2, cv::Mat &R_rel, cv::Mat &t_rel)
 {
@@ -100,4 +101,41 @@ void evaluatePoseError(const Image &img1, const Image &img2, const Eigen::Matrix
     myVis.addCamera(yellow, 0.003, {255, 255, 0, 255});
     // myVis.addCamera(red, 0.0003, {255, 0, 0, 255});
     myVis.writeAllMeshes();
+}
+
+void printNodeDetails(const SfMGraph& graph)
+{
+    std::cout << "Printing node details..." << std::endl;
+    for (const auto& cam : graph.cams) {
+        std::cout << "Node Pose:\n" << cam.pose << std::endl;
+        std::cout << "Intrinsics:\n" << cam.intrinsics << std::endl;
+        std::cout << "Keypoints count: " << cam.keypoints.size() << std::endl;
+        for (const auto& kp : cam.keypoints) {
+            std::cout << "Keypoint: (" << kp.pt.x << ", " << kp.pt.y << ")" << std::endl;
+        }
+    }
+}
+
+void printEdgeDetails(const SfMGraph& graph)
+{
+    std::cout << "Printing edge details..." << std::endl;
+    for (const auto& edge : graph.edges) {
+        std::cout << "Edge between Node " << edge.node1_index << " and Node " << edge.node2_index << std::endl;
+        std::cout << "Match count: " << edge.matches.size() << std::endl;
+        for (const auto& match : edge.matches) {
+            std::cout << "Match: imgIdx1: " << match.imgIdx << ", queryIdx: " << match.queryIdx << ", trainIdx: " << match.trainIdx << std::endl;
+        }
+    }
+}
+
+void printPoint3DDetails(const SfMGraph& graph)
+{
+    std::cout << "Printing 3D point details..." << std::endl;
+    for (const auto& point3D : graph.point3DList) {
+        std::cout << "3D Point: (" << point3D.position(0) << ", " << point3D.position(1) << ", " << point3D.position(2) << ")" << std::endl;
+        std::cout << "Observations count: " << point3D.observations.size() << std::endl;
+        for (const auto& obs : point3D.observations) {
+            std::cout << "Observation: Node index: " << obs.first << ", Keypoint index: " << obs.second << std::endl;
+        }
+    }
 }
