@@ -3,7 +3,6 @@
 #include "include/Settings.h"
 #include "include/Eigen.h"
 #include "include/ImageStorage.h"
-#include "include/SfMOptimizer.h"
 #include "include/PointCloud.h"
 #include "include/CorrespondenceSearch.h"
 #include "include/Utils.h"

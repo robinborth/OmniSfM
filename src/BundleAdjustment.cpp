@@ -69,7 +69,9 @@ void BundleAdjustment::AddObservationsToProblem(SfMGraph &graph, ceres::Problem 
             int nodeIdx = point3d.observations[i].first;
             Node cam = graph.getNode(nodeIdx);
             Eigen::Matrix<double, 6, 1> extrinsicsArr = extractExtrinsics(cam.pose);
-            ceres::CostFunction *cost_function = CreateCostFunction(point3d.position[0], point3d.position[1]);
+            double observed_x = cam.keypoints[point3d.observations[i].second].pt.x;
+            double observed_y = cam.keypoints[point3d.observations[i].second].pt.y;
+            ceres::CostFunction *cost_function = CreateCostFunction(observed_x, observed_y);
 
             problem.AddResidualBlock(cost_function, NULL, intrinsicsArr.data(), extrinsicsArr.data(), point3dArr.data());
         }
