@@ -280,6 +280,7 @@ void SfMInitializer::updateGraph(const std::vector<Vertex> &points3D, const std:
         p3d.position = Eigen::Vector4f(points3D[i].position[0], points3D[i].position[1], points3D[i].position[2], 1.0f);
         p3d.observations.push_back(std::make_pair(img1->id, matches[i].queryIdx)); // source image and keypoint
         p3d.observations.push_back(std::make_pair(img2->id, matches[i].trainIdx)); // target image and keypoint
+        p3d.color = points3D[i].color;
         graph.addPoint3D(p3d);
     }
     // Add edge to the graph representing the matches between these two images
