@@ -35,7 +35,7 @@ int main()
     std::cout << "==> Find correspondences ..." << std::endl;
     CorrespondenceSearch search;
     Image *img0 = imageStorage.findImage(0);
-    Image *img1 = imageStorage.findImage(6);
+    Image *img1 = imageStorage.findImage(10);
     //search.visualizeCorrespondencesBwTwoImg(*img0, *img1);
     //auto matches = search.queryCorrespondences(imageStorage.images);
     auto match = search.queryMatches(*img0, *img1);
@@ -44,18 +44,27 @@ int main()
     std::cout << "==> Run SfM ..." << std::endl;
     SfMInitializer sfm(imageStorage, sfmGraph);
     //sfm.runSfM(matches);
-    sfm.twoViewSfm(inlierMatches, 0, 6);
+    sfm.twoViewSfm(inlierMatches, 0, 10);
+
+    //debugProjectionfor2viewSfm(*img0, *img1, sfmGraph);
+    
+
+    std::cout << "==> Visualize SfM ..." << std::endl;
+    Visualization sfmVis = Visualization("sfm");
+    std::vector<Vertex> points3D = sfm.getPoints3D();
+    auto cameraPoses = sfm.getCameraPoses();
+    sfmVis.addVertex(points3D);
+    sfmVis.addCamera(cameraPoses, 0.001);
+    sfmVis.writeAllMeshes();
+    for (size_t i = 0; i < cameraPoses.size(); ++i) 
+    {
+        std::cout << "Camera Pose Before BA " << i + 1 << ":\n";
+        std::cout << cameraPoses[i] << "\n\n";
+    }
+
+
 
     bundleAdjustment.Adjust(sfmGraph);
-
-    // std::cout << "==> Visualize SfM ..." << std::endl;
-    // Visualization sfmVis = Visualization("sfm");
-    // std::vector<Vertex> points3D = sfm.getPoints3D();
-    // auto cameraPoses = sfm.getCameraPoses();
-    // sfmVis.addVertex(points3D);
-    // sfmVis.addCamera(cameraPoses, 0.001);
-    // sfmVis.writeAllMeshes();
-
     // std::cout << "==> Visualize MVS ..." << std::endl;
     // Visualization mvsVis = Visualization("mvs");
     // cameraPoses = sfm.getCameraPoses();

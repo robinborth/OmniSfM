@@ -35,3 +35,18 @@ Node SfMGraph::getNode(int index) const
     std::cerr << "Node with index " << index << " not found." << std::endl;
     return Node();
 }
+
+int SfMGraph::getNumCams() const
+{
+    return this->cams.size();
+}
+
+int SfMGraph::getNumEdges() const
+{
+    return this->edges.size();
+}
+
+int SfMGraph::getNumPoint3D() const
+{
+    return this->point3DList.size();
+}

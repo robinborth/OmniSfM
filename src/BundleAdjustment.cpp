@@ -1,19 +1,16 @@
 #include "BundleAdjustment.h"
+#include "Visualization.h"
 #include <iostream>
 
-void BundleAdjustment::Adjust(SfMGraph& graph) {
-    ceres::Problem problem;
-
-    // Set up the problem by adding camera parameters and points to the solver
-    AddObservationsToProblem(graph, problem);
-
-    ceres::Solver::Options options;
-    options.linear_solver_type = ceres::DENSE_QR;
-    options.max_num_iterations = 100;
-    ceres::Solver::Summary summary;
-    std::cout << "Solving..." << std::endl;
-    ceres::Solve(options, &problem, &summary);
-    std::cout << summary.FullReport() << "\n";
+std::map<int, Eigen::Matrix<double, 6, 1>> BundleAdjustment::extractAllExtrinsics(const SfMGraph& graph)
+{
+    std::map<int, Eigen::Matrix<double, 6, 1>> extrinsics;
+    for (const auto& cam : graph.cams)
+    {
+        extrinsics[cam.id] = extractExtrinsics(cam.pose);
+    }
+    std::cout << "Extracted all extrinsics" << extrinsics.size() << std::endl;
+    return extrinsics;
 }
 
 Eigen::Matrix<double, 6, 1> BundleAdjustment::extractExtrinsics(const Eigen::Matrix4f &pose) {
@@ -57,23 +54,109 @@ Eigen::Matrix<double, 3, 1> BundleAdjustment::extractPoint3d(const Eigen::Vector
     return pointArr;
 }
 
-void BundleAdjustment::AddObservationsToProblem(SfMGraph &graph, ceres::Problem &problem) 
+std::vector<Eigen::Matrix<double, 3, 1>> BundleAdjustment::extractAllPoint3d(const SfMGraph &graph) 
 {
-    Eigen::Matrix<double, 4, 1> intrinsicsArr = extractIntrinsics(graph.cams[1].intrinsics); // same intrinsics for all cameras
-
+    std::vector<Eigen::Matrix<double, 3, 1>> point3dArr;
     for (const auto &point3d : graph.point3DList) 
     {
-        Eigen::Matrix<double, 3, 1> point3dArr = extractPoint3d(point3d.position);
-        for (size_t i = 0; i < point3d.observations.size(); i++) 
+        point3dArr.push_back(extractPoint3d(point3d.position));
+    }
+    return point3dArr;
+}
+
+std::vector<Eigen::Matrix4f> BundleAdjustment::constructPoseFromExtrinsics(const std::map<int, Eigen::Matrix<double, 6, 1>> &extrinsicsMap)
+{
+    std::vector<Eigen::Matrix4f> poses;
+    for (const auto &extrinsic : extrinsicsMap) {
+        Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
+
+        // Extract the rotation vector and translation vector from the current extrinsics element
+        Eigen::Matrix<double, 3, 1> rotation_vec = extrinsic.second.head<3>();
+        Eigen::Matrix<double, 3, 1> translation_vec = extrinsic.second.tail<3>();
+
+        Eigen::Matrix3d rotationMatrix;
+        ceres::AngleAxisToRotationMatrix(rotation_vec.data(), rotationMatrix.data());
+
+        // Cast the rotation matrix from double to float and insert it into the pose matrix
+        pose.block<3, 3>(0, 0) = rotationMatrix.cast<float>();
+
+        // Cast the translation vector from double to float and insert it into the pose matrix
+        pose.block<3, 1>(0, 3) = translation_vec.cast<float>();
+        
+        poses.push_back(pose);
+    }
+
+    return poses;
+}
+
+std::vector<Vertex> BundleAdjustment::construct3dPoints(const std::vector<Eigen::Matrix<double, 3, 1>> &point3ds, const SfMGraph &graph) 
+{
+    std::vector<Vertex> points3D;
+    for (size_t i = 0; i < point3ds.size(); i++) 
+    {
+        Eigen::Matrix<double, 3, 1> point3d = point3ds[i];
+        Point3D point = graph.point3DList[i];
+        Vertex vertex;
+        vertex.position = Eigen::Vector4f(point3d(0), point3d(1), point3d(2), 1.0);
+        vertex.color = point.color;
+        points3D.push_back(vertex);
+    }
+    return points3D;
+}
+
+void BundleAdjustment::Adjust(SfMGraph &graph) 
+{
+    ceres::Problem problem;
+    Eigen::Matrix<double, 4, 1> intrinsicsArr = extractIntrinsics(graph.cams[1].intrinsics); // same intrinsics for all cameras
+    std::map<int, Eigen::Matrix<double, 6, 1>> extrinsics = extractAllExtrinsics(graph);
+    std::vector<Eigen::Matrix<double, 3, 1>> point3ds = extractAllPoint3d(graph);
+
+    for (size_t j = 0; j < graph.point3DList.size(); j++)
+    {
+        Eigen::Matrix<double, 3, 1> point3dArr = point3ds[j];
+        for (size_t i = 0; i < graph.point3DList[j].observations.size(); i++) 
         {
-            int nodeIdx = point3d.observations[i].first;
+            std::pair<int, int> observation = graph.point3DList[j].observations[i];
+            int nodeIdx = observation.first;
             Node cam = graph.getNode(nodeIdx);
-            Eigen::Matrix<double, 6, 1> extrinsicsArr = extractExtrinsics(cam.pose);
-            double observed_x = cam.keypoints[point3d.observations[i].second].pt.x;
-            double observed_y = cam.keypoints[point3d.observations[i].second].pt.y;
+            Eigen::Matrix<double, 6, 1> extrinsicsArr = extrinsics[nodeIdx];
+            double observed_x = cam.keypoints[observation.second].pt.x;
+            double observed_y = cam.keypoints[observation.second].pt.y;
             ceres::CostFunction *cost_function = CreateCostFunction(observed_x, observed_y);
+            std::cout << "############################################################" << std::endl;
 
             problem.AddResidualBlock(cost_function, NULL, intrinsicsArr.data(), extrinsicsArr.data(), point3dArr.data());
         }
     }
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::ITERATIVE_SCHUR;
+    options.max_num_iterations = 100;
+    options.minimizer_type = ceres::TRUST_REGION;
+    options.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+    options.minimizer_progress_to_stdout = true;
+
+    options.use_nonmonotonic_steps = true;
+    options.function_tolerance = 1e-6;
+    ceres::Solver::Summary summary;
+    std::cout << "Solving..." << std::endl;
+    ceres::Solve(options, &problem, &summary);
+    std::cout << summary.FullReport() << "\n";
+
+    // Here after the optimization, we need to get the updated extrinsics and 3D points
+    // TODO : write these outputs to the graph after verifying them
+    std::vector<Vertex> points3D = construct3dPoints(point3ds, graph);
+    std::cout << " Size of points3D: " << points3D.size() << std::endl;
+    std::vector<Eigen::Matrix4f> cameraPoses = constructPoseFromExtrinsics(extrinsics);
+    for (size_t i = 0; i < cameraPoses.size(); ++i) 
+    {
+        std::cout << "Camera Pose " << i + 1 << ":\n";
+        std::cout << cameraPoses[i] << "\n\n";
+    }
+
+    std::cout << "==> Visualize Bundle Adjustment ..." << std::endl;
+    Visualization sfmVis = Visualization("ba");
+    sfmVis.addVertex(points3D);
+    sfmVis.addCamera(cameraPoses, 0.001);
+    sfmVis.writeAllMeshes();
 }

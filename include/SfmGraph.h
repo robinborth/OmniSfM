@@ -16,4 +16,7 @@ public:
     void addEdge(const Edge& edge);
     void addPoint3D(const Point3D& point3D);
     Node getNode(int index) const;
+    int getNumCams() const;
+    int getNumEdges() const;
+    int getNumPoint3D() const;
 };

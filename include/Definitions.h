@@ -59,6 +59,7 @@ struct Triangle
 struct Point3D {
     Eigen::Vector4f position; // 3D position in world coordinates
     std::vector<std::pair<int, int>> observations; // (Node index, KeyPoint index)
+	Vector4uc color;
 };
 
 // Node structure for each image

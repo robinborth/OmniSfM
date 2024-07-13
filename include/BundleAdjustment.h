@@ -28,7 +28,6 @@ private:
             p[0] += extrinsics[3];
             p[1] += extrinsics[4];
             p[2] += extrinsics[5];
-            std::cout << "Transformed point p: [" << p[0] << ", " << p[1] << ", " << p[2] << "]" << std::endl;
 
             // Perspective division to get normalized image coordinates
             T xp = p[0] / (p[2] + T(1e-10));  // zero div safety
@@ -58,4 +57,8 @@ private:
     Eigen::Matrix<double, 6, 1> extractExtrinsics(const Eigen::Matrix4f &pose);
     Eigen::Matrix<double, 4, 1> extractIntrinsics(const Eigen::Matrix3f &matrix);
     Eigen::Matrix<double, 3, 1> extractPoint3d(const Eigen::Vector4f &position);
+    std::map<int, Eigen::Matrix<double, 6, 1>> extractAllExtrinsics(const SfMGraph& graph);
+    std::vector<Eigen::Matrix<double, 3, 1>> extractAllPoint3d(const SfMGraph& graph);
+    std::vector<Eigen::Matrix4f> constructPoseFromExtrinsics(const std::map<int, Eigen::Matrix<double, 6, 1>> &extrinsicsMap);
+    std::vector<Vertex> construct3dPoints(const std::vector<Eigen::Matrix<double, 3, 1>> &point3ds, const SfMGraph &graph);
 };

@@ -12,8 +12,6 @@ void drawKeypoints_(const cv::Mat& image, const std::vector<cv::KeyPoint>& keypo
 {
     cv::Mat output;
     cv::drawKeypoints(image, keypoints, output, cv::Scalar::all(-1));
-    cv::Point2f pont6 = keypoints[6].pt;
-    cv::circle(image, (cv::Point) pont6, 6, cv::Scalar(0, 255, 0), -1);
     cv::imwrite(windowName + ".png", output);
 }
 
@@ -56,9 +54,23 @@ void projectAndDraw3DPoints(
     cv::imwrite(windowName + ".png", output);
 }
 
+Eigen::Vector2f projectPoint3Dto2D(
+    const cv::Mat image,
+    const Eigen::Vector4f position,
+    const Eigen::Matrix3f intrinsics,
+    const Eigen::Matrix4f pose)
+{
+    Eigen::Vector4f transformedPoint = pose * position;
+    Eigen::Vector3f point = transformedPoint.head<3>();
+    // fx * xp + cx
+    Eigen::Vector3f projectedPoint = intrinsics * point;
+    projectedPoint /= projectedPoint[2];
+    return projectedPoint.head<2>();
+}
+
 // Function to project and draw 3D points onto 2D image and link them to 2D keypoints
 void projectAndDraw3DPointsAndKeypoints(
-    const cv::Mat& image,
+    const Image& image,
     const std::vector<Point3D>& vertices,
     const std::vector<cv::KeyPoint>& keypoints,
     const std::vector<cv::DMatch>& matches, // Matches linking 3D points to 2D keypoints
@@ -66,35 +78,27 @@ void projectAndDraw3DPointsAndKeypoints(
     const Eigen::Matrix4f& pose,
     const std::string& windowName)
 {
+    cv::Mat output = image.rgb.clone();
     // Project the 3D points to the 2D image manually
-    std::vector<cv::Point2f> projectedPoints;
-    for (int i =0; i < vertices.size(); ++i)
+    for (const auto &v : vertices)
     {
-        Eigen::Vector4f position = vertices[i].position;
-        Eigen::Vector4f transformedPoint = pose * position;
-        Eigen::Vector3f point = transformedPoint.head<3>();
-        // fx * xp + cx
-        Eigen::Vector3f projectedPoint = intrinsics * point;
-        projectedPoint /= projectedPoint[2];
-        Eigen::Vector2f projectedPoint2D = projectedPoint.head<2>();
-        projectedPoints.push_back(cv::Point2f(projectedPoint2D[0], projectedPoint2D[1]));
-    }
-
-    cv::Mat output = image.clone();
-    std::cout << "==> Drawing " << projectedPoints.size() << " 3D points and " << keypoints.size() << " 2D keypoints" << std::endl;
-    int i=0;
-    for (const auto &m : matches)
-    {
-        cv::circle(output, keypoints[m.queryIdx].pt, 4, cv::Scalar(0, 255, 0), -1); // Green points for 2D
-        cv::circle(output, projectedPoints[i], 4, cv::Scalar(0, 0, 255), -1); // Blue points for 3D
-        i++;
+        Eigen::Vector4f position = v.position;
+        Eigen::Vector2f projectedPoint2D = projectPoint3Dto2D(image.rgb, position, intrinsics, pose);
+        for (const auto &obs : v.observations)
+        {
+            if (obs.first == image.id)
+            {
+                cv::circle(output, keypoints[obs.second].pt, 4, cv::Scalar(0, 255, 0), -1); // Green points for 2D
+            }
+        }
+        cv::circle(output, cv::Point2f(projectedPoint2D[0], projectedPoint2D[1]), 4, cv::Scalar(0, 0, 255), -1); // Blue points for 3D
     }
     // Display the result
     cv::imwrite(windowName + ".png", output);
 }
 
-void debugProjectionfor2viewSfm(const cv::Mat& image1,
-                    const cv::Mat& image2,
+void debugProjectionfor2viewSfm(const Image& image1,
+                    const Image& image2,
                     SfMGraph& graph)
 {
     const auto& cam1 = graph.cams[0];
@@ -102,7 +106,8 @@ void debugProjectionfor2viewSfm(const cv::Mat& image1,
     const auto& edge1 = graph.edges[0];
 
     projectAndDraw3DPointsAndKeypoints(image1, graph.point3DList, cam1.keypoints, edge1.matches, cam1.intrinsics, cam1.pose, "Camera_1_Projection");
-    drawKeypoints_(image1, cam1.keypoints, "Camera_1_Keypoints");
-    drawKeypoints_(image2, cam2.keypoints, "Camera_2_Keypoints");
+    projectAndDraw3DPointsAndKeypoints(image2, graph.point3DList, cam2.keypoints, edge1.matches, cam2.intrinsics, cam2.pose, "Camera_2_Projection");
+    drawKeypoints_(image1.rgb, cam1.keypoints, "Camera_1_Keypoints");
+    drawKeypoints_(image2.rgb, cam2.keypoints, "Camera_2_Keypoints");
 
 }
