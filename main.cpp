@@ -55,7 +55,7 @@ int main()
 
     //debugProjectionfor2viewSfm(*img0, *img1, sfmGraph);
     
-
+    bundleAdjustment.Adjust(sfmGraph);
     std::cout << "==> Visualize SfM ..." << std::endl;
     Visualization sfmVis = Visualization("sfm");
     std::vector<Vertex> points3D = sfm.getPoints3D();
@@ -68,10 +68,9 @@ int main()
         std::cout << "Camera Pose Before BA " << i + 1 << ":\n";
         std::cout << cameraPoses[i] << "\n\n";
     }
+    std::cout << "Reprojection Error " << calculateReprojectionError(*img0, *img1, sfmGraph) << std::endl;
 
 
-
-    bundleAdjustment.Adjust(sfmGraph);
     // std::cout << "==> Visualize MVS ..." << std::endl;
     // Visualization mvsVis = Visualization("mvs");
     // cameraPoses = sfm.getCameraPoses();

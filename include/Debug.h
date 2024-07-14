@@ -109,5 +109,37 @@ void debugProjectionfor2viewSfm(const Image& image1,
     projectAndDraw3DPointsAndKeypoints(image2, graph.point3DList, cam2.keypoints, edge1.matches, cam2.intrinsics, cam2.pose, "Camera_2_Projection");
     drawKeypoints_(image1.rgb, cam1.keypoints, "Camera_1_Keypoints");
     drawKeypoints_(image2.rgb, cam2.keypoints, "Camera_2_Keypoints");
+}
 
+float calculateReprojectionError(const Image& image1,
+                    const Image& image2,
+                    SfMGraph& graph)
+{
+    const auto& cam1 = graph.cams[0];
+    const auto& cam2 = graph.cams[1];
+    const auto& edge1 = graph.edges[0];
+
+    float totalError = 0.0f;
+    int count = 0;
+    for (const auto &point3d : graph.point3DList)
+    {
+        for (const auto &obs : point3d.observations)
+        {
+            if (obs.first == image1.id)
+            {
+                Eigen::Vector2f projectedPoint = projectPoint3Dto2D(image1.rgb, point3d.position, cam1.intrinsics, cam1.pose);
+                cv::Point2f projectedPointCv(projectedPoint[0], projectedPoint[1]);
+                totalError += cv::norm(projectedPointCv - cam1.keypoints[obs.second].pt);
+                count++;
+            }
+            else if (obs.first == image2.id)
+            {
+                Eigen::Vector2f projectedPoint = projectPoint3Dto2D(image2.rgb, point3d.position, cam2.intrinsics, cam2.pose);
+                cv::Point2f projectedPointCv(projectedPoint[0], projectedPoint[1]);
+                totalError += cv::norm(projectedPointCv - cam2.keypoints[obs.second].pt);
+                count++;
+            }
+        }
+    }
+    return totalError / count;
 }

@@ -306,9 +306,6 @@ void SfMInitializer::updateGraph(const std::vector<Vertex> &points3D, const std:
 
 void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
 {
-    if (imgId1 >= this->imageStorage.getNumImages() || imgId2 >= this->imageStorage.getNumImages() || imgId1 == imgId2) {
-        std::cerr << "Invalid image indices provided. Indices must be within the range of the image vector and not equal." << std::endl;
-    }
     Image *sourceImg = this->imageStorage.findImage(imgId1);
     Image *targetImg = this->imageStorage.findImage(imgId2);
     if (!sourceImg || !targetImg) {
