@@ -24,6 +24,18 @@ void ImageStorage::loadImages()
     readExtrinsics();
 };
 
+// Use this function to use every nth image
+void ImageStorage::useEveryNthImage(int n)
+{
+    std::vector<Image> newImages;
+    for (size_t i = 0; i < images.size(); i += n)
+    {
+        newImages.push_back(images[i]);
+    }
+    images.clear();
+    images = newImages;
+}
+
 void ImageStorage::detectKeypoints()
 {
     for (auto &image : images)
@@ -250,3 +262,62 @@ bool ImageStorage::loadImages(const std::string &type, std::vector<std::string> 
     std::cout << "Loaded images: " << images.size() << std::endl;
     return true;
 }
+
+Eigen::Matrix3f ImageStorage::getIntrinsics() const
+{
+    return images[0].K;
+}
+
+void ImageStorage::updatePose(int64_t id, const Eigen::Matrix4f &pose)
+{
+    Image *img = findImage(id);
+    if (!img)
+    {
+        std::cerr << "Error: Could not find image." << std::endl;
+        return;
+    }
+    img->P = pose;
+}
+
+void ImageStorage::updateScale(int64_t id, float scale)
+{
+    Image *img = findImage(id);
+    if (!img)
+    {
+        std::cerr << "Error: Could not find image." << std::endl;
+        return;
+    }
+    img->w = scale;
+}
+
+void ImageStorage::updateShift(int64_t id, float shift)
+{
+    Image *img = findImage(id);
+    if (!img)
+    {
+        std::cerr << "Error: Could not find image." << std::endl;
+        return;
+    }
+    img->q = shift;
+}
+
+int ImageStorage::getNumImages() const
+{
+    return images.size();
+}
+
+Eigen::Matrix4f ImageStorage::getPose(int64_t id)
+{
+    Image *img = findImage(id);
+    if (!img)
+    {
+        std::cerr << "Error: Could not find image." << std::endl;
+        return Eigen::Matrix4f::Identity();
+    }
+    return img->P;
+}
+
+// std::vector<Image> ImageStorage::getXNumOfImages(int num)
+// {
+
+// }

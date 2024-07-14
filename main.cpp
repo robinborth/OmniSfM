@@ -28,6 +28,8 @@ int main()
     BundleAdjustment bundleAdjustment;
     std::cout << "==> Load images ..." << std::endl;
     imageStorage.loadImages();
+    imageStorage.useEveryNthImage(10);
+    std::cout << imageStorage.getNumImages() << " images will be used." << std::endl;
 
     std::cout << "==> Detect keypoints ..." << std::endl;
     imageStorage.detectKeypoints();
@@ -36,6 +38,11 @@ int main()
     CorrespondenceSearch search;
     Image *img0 = imageStorage.findImage(0);
     Image *img1 = imageStorage.findImage(10);
+    if (!img0 || !img1)
+    {
+        std::cerr << "Error: Could not find images." << std::endl;
+        return 1;
+    }
     //search.visualizeCorrespondencesBwTwoImg(*img0, *img1);
     //auto matches = search.queryCorrespondences(imageStorage.images);
     auto match = search.queryMatches(*img0, *img1);
