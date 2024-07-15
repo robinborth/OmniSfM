@@ -2,10 +2,10 @@
 #include "Visualization.h"
 #include <iostream>
 
-std::map<int, Eigen::Matrix<double, 6, 1>> BundleAdjustment::extractAllExtrinsics(const SfMGraph& graph)
+std::map<int, Eigen::Matrix<double, 6, 1>> BundleAdjustment::extractAllExtrinsics(const SfMGraph &graph)
 {
     std::map<int, Eigen::Matrix<double, 6, 1>> extrinsics;
-    for (const auto& cam : graph.cams)
+    for (const auto &cam : graph.cams)
     {
         extrinsics[cam.id] = extractExtrinsics(cam.pose);
     }
@@ -13,7 +13,8 @@ std::map<int, Eigen::Matrix<double, 6, 1>> BundleAdjustment::extractAllExtrinsic
     return extrinsics;
 }
 
-Eigen::Matrix<double, 6, 1> BundleAdjustment::extractExtrinsics(const Eigen::Matrix4f &pose) {
+Eigen::Matrix<double, 6, 1> BundleAdjustment::extractExtrinsics(const Eigen::Matrix4f &pose)
+{
     // Initialize the resulting extrinsics array
     Eigen::Matrix<double, 6, 1> extrinsicsArr;
 
@@ -31,7 +32,7 @@ Eigen::Matrix<double, 6, 1> BundleAdjustment::extractExtrinsics(const Eigen::Mat
     return extrinsicsArr;
 }
 
-Eigen::Matrix<double, 4, 1> BundleAdjustment::extractIntrinsics(const Eigen::Matrix3f &matrix) 
+Eigen::Matrix<double, 4, 1> BundleAdjustment::extractIntrinsics(const Eigen::Matrix3f &matrix)
 {
     Eigen::Matrix<double, 4, 1> intrinsics; // for fx, fy, cx, cy
     // cast matrix to double
@@ -45,19 +46,20 @@ Eigen::Matrix<double, 4, 1> BundleAdjustment::extractIntrinsics(const Eigen::Mat
     return intrinsics;
 }
 
-Eigen::Matrix<double, 3, 1> BundleAdjustment::extractPoint3d(const Eigen::Vector4f &position) 
+Eigen::Matrix<double, 3, 1> BundleAdjustment::extractPoint3d(const Eigen::Vector4f &position)
 {
     Eigen::Matrix<double, 3, 1> pointArr;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         pointArr(i) = position(i);
     }
     return pointArr;
 }
 
-std::vector<Eigen::Matrix<double, 3, 1>> BundleAdjustment::extractAllPoint3d(const SfMGraph &graph) 
+std::vector<Eigen::Matrix<double, 3, 1>> BundleAdjustment::extractAllPoint3d(const SfMGraph &graph)
 {
     std::vector<Eigen::Matrix<double, 3, 1>> point3dArr;
-    for (const auto &point3d : graph.point3DList) 
+    for (const auto &point3d : graph.point3DList)
     {
         point3dArr.push_back(extractPoint3d(point3d.position));
     }
@@ -67,7 +69,8 @@ std::vector<Eigen::Matrix<double, 3, 1>> BundleAdjustment::extractAllPoint3d(con
 std::vector<Eigen::Matrix4f> BundleAdjustment::constructPoseFromExtrinsics(const std::map<int, Eigen::Matrix<double, 6, 1>> &extrinsicsMap)
 {
     std::vector<Eigen::Matrix4f> poses;
-    for (const auto &extrinsic : extrinsicsMap) {
+    for (const auto &extrinsic : extrinsicsMap)
+    {
         Eigen::Matrix4f pose = Eigen::Matrix4f::Identity();
 
         // Extract the rotation vector and translation vector from the current extrinsics element
@@ -82,17 +85,17 @@ std::vector<Eigen::Matrix4f> BundleAdjustment::constructPoseFromExtrinsics(const
 
         // Cast the translation vector from double to float and insert it into the pose matrix
         pose.block<3, 1>(0, 3) = translation_vec.cast<float>();
-        
+
         poses.push_back(pose);
     }
 
     return poses;
 }
 
-std::vector<Vertex> BundleAdjustment::construct3dPoints(const std::vector<Eigen::Matrix<double, 3, 1>> &point3ds, const SfMGraph &graph) 
+std::vector<Vertex> BundleAdjustment::construct3dPoints(const std::vector<Eigen::Matrix<double, 3, 1>> &point3ds, const SfMGraph &graph)
 {
     std::vector<Vertex> points3D;
-    for (size_t i = 0; i < point3ds.size(); i++) 
+    for (size_t i = 0; i < point3ds.size(); i++)
     {
         Eigen::Matrix<double, 3, 1> point3d = point3ds[i];
         Point3D point = graph.point3DList[i];
@@ -104,17 +107,17 @@ std::vector<Vertex> BundleAdjustment::construct3dPoints(const std::vector<Eigen:
     return points3D;
 }
 
-void BundleAdjustment::Adjust(SfMGraph &graph) 
+void BundleAdjustment::Adjust(SfMGraph &graph)
 {
     ceres::Problem problem;
     Eigen::Matrix<double, 4, 1> intrinsicsArr = extractIntrinsics(graph.cams[1].intrinsics); // same intrinsics for all cameras
     std::map<int, Eigen::Matrix<double, 6, 1>> extrinsics = extractAllExtrinsics(graph);
-    std::vector<Eigen::Matrix<double, 3, 1>> point3ds = extractAllPoint3d(graph);
+    std::vector<Eigen::Matrix<double, 3, 1>> point3ds = extractAllPoint3d(graph); // ensure no duplicates
 
     for (size_t j = 0; j < graph.point3DList.size(); j++)
     {
         Eigen::Matrix<double, 3, 1> point3dArr = point3ds[j];
-        for (size_t i = 0; i < graph.point3DList[j].observations.size(); i++) 
+        for (size_t i = 0; i < graph.point3DList[j].observations.size(); i++)
         {
             std::pair<int, int> observation = graph.point3DList[j].observations[i];
             int nodeIdx = observation.first;
@@ -148,7 +151,7 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
     std::vector<Vertex> points3D = construct3dPoints(point3ds, graph);
     std::cout << " Size of points3D: " << points3D.size() << std::endl;
     std::vector<Eigen::Matrix4f> cameraPoses = constructPoseFromExtrinsics(extrinsics);
-    for (size_t i = 0; i < cameraPoses.size(); ++i) 
+    for (size_t i = 0; i < cameraPoses.size(); ++i)
     {
         std::cout << "Camera Pose " << i + 1 << ":\n";
         std::cout << cameraPoses[i] << "\n\n";

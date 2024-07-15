@@ -17,7 +17,6 @@
 #include "include/Debug.h"
 #include <opencv2/core/eigen.hpp>
 
-
 int main()
 {
     std::cout << "==> Load settings ..." << std::endl;
@@ -43,18 +42,17 @@ int main()
         std::cerr << "Error: Could not find images." << std::endl;
         return 1;
     }
-    //search.visualizeCorrespondencesBwTwoImg(*img0, *img1);
-    //auto matches = search.queryCorrespondences(imageStorage.images);
+    // auto matches = search.queryCorrespondences(imageStorage.images);
     auto match = search.queryMatches(*img0, *img1);
     auto inlierMatches = search.filterMatchesWithRANSAC(*img0, *img1, match);
 
     std::cout << "==> Run SfM ..." << std::endl;
     SfMInitializer sfm(imageStorage, sfmGraph);
-    //sfm.runSfM(matches);
+    // sfm.runSfM(matches);
     sfm.twoViewSfm(inlierMatches, 0, 10);
 
-    //debugProjectionfor2viewSfm(*img0, *img1, sfmGraph);
-    
+    debugProjectionfor2viewSfm(*img0, *img1, sfmGraph);
+
     bundleAdjustment.Adjust(sfmGraph);
     std::cout << "==> Visualize SfM ..." << std::endl;
     Visualization sfmVis = Visualization("sfm");
@@ -63,13 +61,12 @@ int main()
     sfmVis.addVertex(points3D);
     sfmVis.addCamera(cameraPoses, 0.001);
     sfmVis.writeAllMeshes();
-    for (size_t i = 0; i < cameraPoses.size(); ++i) 
+    for (size_t i = 0; i < cameraPoses.size(); ++i)
     {
         std::cout << "Camera Pose Before BA " << i + 1 << ":\n";
         std::cout << cameraPoses[i] << "\n\n";
     }
     std::cout << "Reprojection Error " << calculateReprojectionError(*img0, *img1, sfmGraph) << std::endl;
-
 
     // std::cout << "==> Visualize MVS ..." << std::endl;
     // Visualization mvsVis = Visualization("mvs");
