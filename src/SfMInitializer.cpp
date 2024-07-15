@@ -73,7 +73,6 @@ std::vector<Vertex> SfMInitializer::triangulatePointsWithColor(const std::vector
     {
         cv::Vec4d point = points4D.col(i);
         point /= point[3]; // Normalize to convert from homogeneous to Cartesian coordinates
-        point[2] = -point[2];
 
         // Average the colors from both images
         Vector4uc color(
@@ -305,13 +304,15 @@ void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, s
 {
     Image *sourceImg = this->imageStorage.findImage(imgId1);
     Image *targetImg = this->imageStorage.findImage(imgId2);
-    if (!sourceImg || !targetImg) {
+    if (!sourceImg || !targetImg)
+    {
         std::cerr << "Error: Could not find images." << std::endl;
         return;
     }
 
     // Check if there are enough matches to proceed
-    if (matchesForPair.size() < 60) {
+    if (matchesForPair.size() < 60)
+    {
         std::cout << "Not enough matches to estimate a reliable pose (" << matchesForPair.size() << " matches found)." << std::endl;
     }
 
@@ -346,7 +347,6 @@ void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, s
     auto c2 = vertex2Camera(imgId2, points3D);
     solveDepthMaps(imgId2, pts2, c2);
 }
-
 
 const std::vector<Vertex> &SfMInitializer::getPoints3D() const { return points3D; }
 const std::vector<Eigen::Matrix4f> SfMInitializer::getCameraPoses() const
