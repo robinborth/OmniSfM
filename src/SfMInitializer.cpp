@@ -73,7 +73,6 @@ std::vector<Vertex> SfMInitializer::triangulatePointsWithColor(const std::vector
     {
         cv::Vec4d point = points4D.col(i);
         point /= point[3]; // Normalize to convert from homogeneous to Cartesian coordinates
-        point[2] = -point[2];
 
         // Average the colors from both images
         Vector4uc color(
