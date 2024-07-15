@@ -27,46 +27,70 @@ int main()
     BundleAdjustment bundleAdjustment;
     std::cout << "==> Load images ..." << std::endl;
     imageStorage.loadImages();
-    imageStorage.useEveryNthImage(10);
+    imageStorage.useEveryNthImage(4); // current setting uses --n=51
     std::cout << imageStorage.getNumImages() << " images will be used." << std::endl;
 
     std::cout << "==> Detect keypoints ..." << std::endl;
     imageStorage.detectKeypoints();
 
     std::cout << "==> Find correspondences ..." << std::endl;
-    CorrespondenceSearch search;
-    Image *img0 = imageStorage.findImage(0);
-    Image *img1 = imageStorage.findImage(10);
-    if (!img0 || !img1)
-    {
-        std::cerr << "Error: Could not find images." << std::endl;
-        return 1;
-    }
-    // auto matches = search.queryCorrespondences(imageStorage.images);
-    auto match = search.queryMatches(*img0, *img1);
-    auto inlierMatches = search.filterMatchesWithRANSAC(*img0, *img1, match);
-
-    std::cout << "==> Run SfM ..." << std::endl;
+    Image targetImg;
+    Image sourceImg;
     SfMInitializer sfm(imageStorage, sfmGraph);
-    // sfm.runSfM(matches);
-    sfm.twoViewSfm(inlierMatches, 0, 10);
+    CorrespondenceSearch search;
 
-    debugProjectionfor2viewSfm(*img0, *img1, sfmGraph);
+    sourceImg = imageStorage.images[0];                   // initilize with the first image
+    for (auto k = 1; k < imageStorage.images.size(); ++k) // iterate over all the images
+    {
+        // extract the next target image
+        if (k > 1) // skip the first iteration for the update
+            sourceImg = targetImg;
+        targetImg = imageStorage.images[k];
 
-    bundleAdjustment.Adjust(sfmGraph);
+        // searches for inliers between the current current image and the source
+        auto matches = search.queryMatches(sourceImg, targetImg);
+        auto inlierMatches = search.filterMatchesWithRANSAC(sourceImg, targetImg, matches);
+
+        if (k == 1)
+        {
+            std::cout << "==> Essential Matrix Initialization ..." << std::endl;
+            sfm.twoViewSfm(inlierMatches, sourceImg.id, targetImg.id);
+        }
+        else
+        {
+            std::cout << "==> PnP Initilization..." << std::endl;
+            sfm.addSfM(inlierMatches, sourceImg.id, targetImg.id);
+        }
+
+        // debug the projections before
+        debugProjection(targetImg, sfmGraph, "before");
+        std::cout << "Reprojection Error " << calculateReprojectionError(sourceImg, targetImg, sfmGraph) << std::endl;
+        // run bundle adjustment
+        std::cout << "==> Local Bundle Adjustment step (" << k << ") ..." << std::endl;
+        bundleAdjustment.Adjust(sfmGraph);
+        // debug the projections after
+        debugProjection(targetImg, sfmGraph, "after");
+        std::cout << "Reprojection Error " << calculateReprojectionError(sourceImg, targetImg, sfmGraph) << std::endl;
+    }
+
     std::cout << "==> Visualize SfM ..." << std::endl;
     Visualization sfmVis = Visualization("sfm");
     std::vector<Vertex> points3D = sfm.getPoints3D();
+    // this is cheating but for visualization better
+    // we should remove outliers in SfM!
+    std::vector<Vertex> cleanPoints3D = cleanPointCloud(points3D);
+
     auto cameraPoses = sfm.getCameraPoses();
-    sfmVis.addVertex(points3D);
-    sfmVis.addCamera(cameraPoses, 0.001);
+    sfmVis.addVertex(cleanPoints3D);
+    sfmVis.addCamera(cameraPoses, 0.0002);
     sfmVis.writeAllMeshes();
     for (size_t i = 0; i < cameraPoses.size(); ++i)
     {
         std::cout << "Camera Pose Before BA " << i + 1 << ":\n";
         std::cout << cameraPoses[i] << "\n\n";
     }
-    std::cout << "Reprojection Error " << calculateReprojectionError(*img0, *img1, sfmGraph) << std::endl;
+
+    std::cout << "Reprojection Error " << calculateReprojectionError(sourceImg, targetImg, sfmGraph) << std::endl;
 
     // std::cout << "==> Visualize MVS ..." << std::endl;
     // Visualization mvsVis = Visualization("mvs");

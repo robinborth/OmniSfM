@@ -29,8 +29,9 @@ public:
     void updateShift(int64_t id, float shift);
     int getNumImages() const;
     Eigen::Matrix4f getPose(int64_t id);
-private:
     std::vector<Image> images;
+
+private:
     bool readIntrinsics();
 
     bool readExtrinsics();
@@ -47,5 +48,4 @@ private:
     std::vector<int64_t> idDepthImages;
     std::vector<std::string> filenameRGBImages;
     std::vector<int64_t> idRGBImages;
-
 };

@@ -19,6 +19,7 @@ public:
     const std::vector<Eigen::Matrix4f> getCameraPoses() const;
     Eigen::Matrix4f combineRotationAndTranslationIntoMatrix(const cv::Mat &R, const cv::Mat &t);
     void twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2);
+    void addSfM(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2);
 
 private:
     bool estimateInitialPose(const std::vector<cv::Point2f> &pts1, const std::vector<cv::Point2f> &pts2, cv::Mat &R, cv::Mat &t);
@@ -32,10 +33,10 @@ private:
     bool refineCameraPoseWithPnP(const std::vector<Vertex> &objectPoints,
                                  const std::vector<cv::Point2f> &imagePoints,
                                  size_t cameraId,
-                                 const cv::Mat &R,
-                                 const cv::Mat &t);
+                                 cv::Mat &R,
+                                 cv::Mat &t);
     std::vector<cv::Point3f> convertVerticesToCvPoint3f(const std::vector<Vertex> &vertices);
-    void updateGraph(const std::vector<Vertex> &points3D, const std::vector<cv::DMatch> &matches, Image* img1, Image* img2);
+    void updateGraph(const std::vector<Vertex> &points3D, const std::vector<cv::DMatch> &matches, Image *img1, Image *img2);
 
     std::vector<Vertex> points3D;
     ImageStorage &imageStorage;

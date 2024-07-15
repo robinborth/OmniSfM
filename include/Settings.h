@@ -9,7 +9,7 @@ struct Settings
 #else
     std::string rootDir = "EDIT me!";
 #endif
-    std::string dataset = "freiburg_large";
+    std::string dataset = "freiburg_large2";
     int siftNumFeatures = 0;
     float siftThreshold = 0.98f;
 };

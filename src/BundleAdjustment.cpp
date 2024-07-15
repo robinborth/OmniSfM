@@ -126,8 +126,7 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
             double observed_x = cam.keypoints[observation.second].pt.x;
             double observed_y = cam.keypoints[observation.second].pt.y;
             ceres::CostFunction *cost_function = CreateCostFunction(observed_x, observed_y);
-            std::cout << "############################################################" << std::endl;
-
+            // std::cout << "############################################################" << std::endl;
             problem.AddResidualBlock(cost_function, NULL, intrinsicsArr.data(), extrinsicsArr.data(), point3dArr.data());
         }
     }
