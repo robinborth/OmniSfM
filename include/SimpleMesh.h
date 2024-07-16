@@ -35,7 +35,7 @@ public:
                                                   Vector4uc color);
     static SimpleMesh cylinder(const Vector3f &p0, const Vector3f &p1, float radius, unsigned stacks, unsigned slices, const Vector4uc color = Vector4uc{0, 0, 255, 255});
     static SimpleMesh cylinder(const Eigen::Vector3f &p0, const Eigen::Vector3f &p1, float radius, unsigned stacks, unsigned slices, Vector4uc color, const Matrix4f &transform);
-
+    static SimpleMesh createCubeWithCylinders(float edgeLength, float radius, unsigned stacks, unsigned slices, Vector4uc color);
 private:
 	std::vector<Vertex> m_vertices;
 	std::vector<Triangle> m_triangles;

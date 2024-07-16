@@ -278,7 +278,7 @@ void Visualization::addCamera(const Eigen::Matrix4f &cameraPose, const cv::Mat &
     auto scale = static_cast<float>(focalLength * 0.00003);
     // std::cout << scale << std::endl;
 
-    auto meshCam = SimpleMesh::camera(cameraPose, scale, color);
+    //auto meshCam = SimpleMesh::camera(cameraPose, scale, color);
     //SimpleMesh wireframeCamera = SimpleMesh::generateWireframe(meshCam, 0.01f); //adjust wire(cylinder) radius accordingly
     SimpleMesh wireframeCamera2 = SimpleMesh::generateCylinderCamera(cameraPose, scale,10,10,color); //adjust wire(cylinder) radius accordingly
 
