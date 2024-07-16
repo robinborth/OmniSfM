@@ -263,7 +263,10 @@ Vector4uc Visualization::generateColor(int count, int max_count)
 void Visualization::addCamera(const Eigen::Matrix4f &cameraPose, const float scale, const Vector4uc &color)
 {
 
-    _cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(cameraPose, scale, color), _cameraMesh, Matrix4f::Identity());
+    auto meshCam = SimpleMesh::camera(cameraPose, scale, color);
+    //SimpleMesh wireframeCamera = SimpleMesh::generateWireframe(meshCam, 0.01f); //adjust wire(cylinder) radius accordingly
+    SimpleMesh wireframeCamera2 = SimpleMesh::generateCylinderCamera(cameraPose, scale,10,10,color);
+    _cameraMesh = SimpleMesh::joinMeshes(wireframeCamera2, _cameraMesh, Matrix4f::Identity());
 }
 void Visualization::addCamera(const Eigen::Matrix4f &cameraPose, const cv::Mat &intrinsic, const Vector4uc &color)
 {
@@ -271,7 +274,12 @@ void Visualization::addCamera(const Eigen::Matrix4f &cameraPose, const cv::Mat &
     // Determine the scale based on the focal length
     auto scale = static_cast<float>(focalLength * 0.00003);
     // std::cout << scale << std::endl;
-    _cameraMesh = SimpleMesh::joinMeshes(SimpleMesh::camera(cameraPose, scale, color), _cameraMesh, Matrix4f::Identity());
+
+    //auto meshCam = SimpleMesh::camera(cameraPose, scale, color);
+    //SimpleMesh wireframeCamera = SimpleMesh::generateWireframe(meshCam, 0.01f); //adjust wire(cylinder) radius accordingly
+    SimpleMesh wireframeCamera2 = SimpleMesh::generateCylinderCamera(cameraPose, scale,10,10,color); //adjust wire(cylinder) radius accordingly
+
+    _cameraMesh = SimpleMesh::joinMeshes(wireframeCamera2, _cameraMesh, Matrix4f::Identity());
 }
 
 void Visualization::addCamera(const std::vector<Eigen::Matrix4f> &cameraPoses, const float scale, const Vector4uc &color)

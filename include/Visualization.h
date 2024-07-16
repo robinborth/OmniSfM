@@ -29,6 +29,7 @@ public:
     int writePointCloudMesh();
     int writeAllMeshes();
 
+    SimpleMesh _cameraMesh;
 private:
     static void debugCorrespondenceMatching();
     static std::vector<Eigen::Vector3f> generateSyntheticPointCloud(); // Function to create a simple point cloud of a cube
@@ -37,7 +38,7 @@ private:
     static void saveToPLY(const std::vector<Eigen::Vector3f> &points3D, const std::vector<Eigen::Matrix4f> &cameraPoses,
                           const std::string &filename);
 
-    SimpleMesh _cameraMesh;
+
     SimpleMesh _pointCloudMesh;
     std::string _filename;
 };
