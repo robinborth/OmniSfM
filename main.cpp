@@ -27,7 +27,7 @@ int main()
     BundleAdjustment bundleAdjustment;
     std::cout << "==> Load images ..." << std::endl;
     imageStorage.loadImages();
-    imageStorage.useEveryNthImage(4); // current setting uses --n=51
+    imageStorage.useEveryNthImage(10); // current setting uses --n=51
     std::cout << imageStorage.getNumImages() << " images will be used." << std::endl;
 
     std::cout << "==> Detect keypoints ..." << std::endl;

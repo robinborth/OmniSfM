@@ -81,18 +81,20 @@ void projectAndDraw3DPointsAndKeypoints(
 {
     cv::Mat output = image.rgb.clone();
     // Project the 3D points to the 2D image manually
+    std::cout << " 3D points: " << vertices.size() << std::endl;
     for (const auto &v : vertices)
     {
-        Eigen::Vector4f position = v.position;
-        Eigen::Vector2f projectedPoint2D = projectPoint3Dto2D(image.rgb, position, intrinsics, pose);
         for (const auto &obs : v.observations)
         {
             if (obs.first == image.id)
             {
+                std::cout << " 3d position: " << v.position << std::endl;
                 cv::circle(output, keypoints[obs.second].pt, 4, cv::Scalar(0, 255, 0), -1); // Green points for 2D
+                Eigen::Vector4f position = v.position;
+                Eigen::Vector2f projectedPoint2D = projectPoint3Dto2D(image.rgb, position, intrinsics, pose);
+                cv::circle(output, cv::Point2f(projectedPoint2D[0], projectedPoint2D[1]), 4, cv::Scalar(0, 0, 255), -1); // Red points for 3D
             }
         }
-        cv::circle(output, cv::Point2f(projectedPoint2D[0], projectedPoint2D[1]), 4, cv::Scalar(0, 0, 255), -1); // Blue points for 3D
     }
     // Display the result
     cv::imwrite(windowName + ".png", output);
@@ -138,9 +140,8 @@ float calculateReprojectionError(const Image &image1,
                                  const Image &image2,
                                  SfMGraph &graph)
 {
-    const auto &cam1 = graph.cams[0];
-    const auto &cam2 = graph.cams[1];
-    const auto &edge1 = graph.edges[0];
+    const auto &cam1 = graph.findCameraById(image1.id);
+    const auto &cam2 = graph.findCameraById(image2.id);
 
     float totalError = 0.0f;
     int count = 0;

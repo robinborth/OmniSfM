@@ -7,7 +7,18 @@ SfMGraph::SfMGraph()
 
 int SfMGraph::addNode(const Node &node)
 {
-    this->cams.push_back(node);
+    bool nodeExist = false; // ensure that we don't insert duplicates
+    for (auto &cam : this->cams)
+    {
+        if (cam.id == node.id)
+        {
+            nodeExist = true;
+        }
+    }
+    if (!nodeExist)
+    {
+        this->cams.push_back(node);
+    }
     return this->cams.size() - 1;
 }
 
@@ -80,4 +91,45 @@ int SfMGraph::getNumEdges() const
 int SfMGraph::getNumPoint3D() const
 {
     return this->point3DList.size();
+}
+
+void SfMGraph::updateAdjusted3DPointPoses(std::vector<Vertex> &points3D)
+{
+    for (size_t i = 0; i < this->point3DList.size(); i++)
+    {
+        Point3D point = this->point3DList[i];
+        point.position = Eigen::Vector4f(points3D[i].position(0), points3D[i].position(1), points3D[i].position(2), 1.0);
+    }
+}
+
+void SfMGraph::updateAdjustedIntrinsicParams(Eigen::Matrix<double, 4, 1> &intrinsics)
+{
+    for (size_t i = 0; i < this->cams.size(); i++)
+    {
+        this->cams[i].intrinsics(0, 0) = intrinsics(0);
+        this->cams[i].intrinsics(1, 1) = intrinsics(1);
+        this->cams[i].intrinsics(0, 2) = intrinsics(2);
+        this->cams[i].intrinsics(1, 2) = intrinsics(3);
+    }
+}
+
+void SfMGraph::updateAdjustedExtrinsicParams(std::vector<Eigen::Matrix4f> &extrinsics)
+{
+    for (size_t i = 0; i < this->cams.size(); i++)
+    {
+        this->cams[i].pose = extrinsics[i];
+    }
+}
+
+Node SfMGraph::findCameraById(int id)
+{
+    for (const auto &cam : this->cams)
+    {
+        if (cam.id == id)
+        {
+            return cam;
+        }
+    }
+    std::cerr << "Camera with id " << id << " not found." << std::endl;
+    return Node();
 }

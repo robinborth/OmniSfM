@@ -128,6 +128,8 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
             ceres::CostFunction *cost_function = CreateCostFunction(observed_x, observed_y);
             // std::cout << "############################################################" << std::endl;
             problem.AddResidualBlock(cost_function, NULL, intrinsicsArr.data(), extrinsicsArr.data(), point3dArr.data());
+
+            problem.SetParameterBlockConstant(intrinsicsArr.data());
         }
     }
 
@@ -139,7 +141,9 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
     options.minimizer_progress_to_stdout = true;
 
     options.use_nonmonotonic_steps = true;
-    options.function_tolerance = 1e-6;
+    options.function_tolerance = 1e-10;
+    options.max_trust_region_radius =10000;
+    options.min_trust_region_radius = 1e-2;
     ceres::Solver::Summary summary;
     std::cout << "Solving..." << std::endl;
     ceres::Solve(options, &problem, &summary);
@@ -150,6 +154,13 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
     std::vector<Vertex> points3D = construct3dPoints(point3ds, graph);
     std::cout << " Size of points3D: " << points3D.size() << std::endl;
     std::vector<Eigen::Matrix4f> cameraPoses = constructPoseFromExtrinsics(extrinsics);
+
+    graph.updateAdjusted3DPointPoses(points3D);
+    //graph.updateAdjustedIntrinsicParams(intrinsicsArr);
+    graph.updateAdjustedExtrinsicParams(cameraPoses);
+
+    std::cout << intrinsicsArr(0) << " " << intrinsicsArr(1) << " " << intrinsicsArr(2) << " " << intrinsicsArr(3) << std::endl;
+
     for (size_t i = 0; i < cameraPoses.size(); ++i)
     {
         std::cout << "Camera Pose " << i + 1 << ":\n";

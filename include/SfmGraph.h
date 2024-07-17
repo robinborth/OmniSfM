@@ -19,4 +19,9 @@ public:
     int getNumCams() const;
     int getNumEdges() const;
     int getNumPoint3D() const;
+    Node findCameraById(int id);
+
+    void updateAdjusted3DPointPoses(std::vector<Vertex> &points3D);
+    void updateAdjustedIntrinsicParams(Eigen::Matrix<double, 4, 1> &intrinsics);
+    void updateAdjustedExtrinsicParams(std::vector<Eigen::Matrix4f> &extrinsics);
 };

@@ -55,8 +55,6 @@ private:
             new ReprojectionError(observed_x, observed_y));
     }
 
-    // Helper method to add observations to the Ceres problem
-    void AddObservationsToProblem(SfMGraph &graph, ceres::Problem &problem);
     Eigen::Matrix<double, 6, 1> extractExtrinsics(const Eigen::Matrix4f &pose);
     Eigen::Matrix<double, 4, 1> extractIntrinsics(const Eigen::Matrix3f &matrix);
     Eigen::Matrix<double, 3, 1> extractPoint3d(const Eigen::Vector4f &position);
