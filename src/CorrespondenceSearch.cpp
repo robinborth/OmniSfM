@@ -36,12 +36,12 @@ ImagePairMatches CorrespondenceSearch::queryCorrespondences(const std::vector<Im
             vector<cv::DMatch> matches = queryMatches(images[i], images[j]);
 
             vector<cv::DMatch> inlierMatches = this->filterMatchesWithRANSAC(images[i], images[j], matches);
+            std::cout << "==> Found " << inlierMatches.size() << " inlier matches between images " << images[i].id << " and " << images[j].id << std::endl;
 
             // Only keep pairs with at least 60 matches
             if (inlierMatches.size() >= 60)
             {
-                printf("==> Found %lu inlier matches between images %lld and %lld\n", inlierMatches.size(), images[i].id, images[j].id);
-                allMatches[std::make_pair(images[i].id, images[j].id)] = matches;
+                allMatches[std::make_pair(images[i].id, images[j].id)] = inlierMatches;
             }
         }
     }

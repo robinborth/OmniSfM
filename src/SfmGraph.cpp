@@ -26,11 +26,6 @@ int SfMGraph::addNode(const Node &node)
 
 void SfMGraph::addEdge(const Edge &edge)
 {
-    if (edge.node1_index >= this->cams.size() || edge.node2_index >= this->cams.size() || edge.node1_index == edge.node2_index)
-    {
-        std::cerr << "Invalid node indices in edge or self-loop detected." << std::endl;
-        return;
-    }
     this->edges.push_back(edge);
 }
 
@@ -240,4 +235,16 @@ std::vector<Vertex> SfMGraph::construct3dPoints(const std::vector<Eigen::Matrix<
         points3D.push_back(vertex);
     }
     return points3D;
+}
+
+bool SfMGraph::isImageExist(int id) const
+{
+    for (const auto &cam : this->cams)
+    {
+        if (cam.id == id)
+        {
+            return true;
+        }
+    }
+    return false;
 }

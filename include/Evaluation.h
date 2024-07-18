@@ -139,3 +139,20 @@ void printPoint3DDetails(const SfMGraph& graph)
         }
     }
 }
+
+// std::map<ImagePair, MatchList> ImagePairMatches
+
+void printAllMatches(ImagePairMatches allMatches)
+{
+    for (const auto& [pair, matches] : allMatches) 
+    {
+        std::cout << "Matches between images " << pair.first << " and " << pair.second << std::endl;
+        std::cout << "Number of matches: " << matches.size() << std::endl;
+        std::cout << "##########################################################" << std::endl;
+        // for (const auto& match : matches) 
+        // {
+        //     std::cout << "QueryIdx: " << match.queryIdx << ", trainIdx: " << match.trainIdx << std::endl;
+        // }
+        // std::cout << "##########################################################" << std::endl;
+    }
+}

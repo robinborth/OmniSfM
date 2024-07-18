@@ -13,13 +13,14 @@ public:
     std::vector<Point3D> point3DList;
 
     int addNode(const Node& node);
-    void addEdge(const Edge& edge);
-    void addPoint3D(const Point3D& point3D);
-    Node getNode(int index) const;
     int getNumCams() const;
     int getNumEdges() const;
     int getNumPoint3D() const;
+    bool isImageExist(int id) const;
+    void addEdge(const Edge& edge);
+    void addPoint3D(const Point3D& point3D);
     Node findCameraById(int id);
+    Node getNode(int index) const;
 
     void updateAdjusted3DPointPoses(std::vector<Vertex> &points3D);
     void updateAdjustedIntrinsicParams(Eigen::Matrix<double, 4, 1> &intrinsics);
