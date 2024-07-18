@@ -21,6 +21,7 @@ public:
     void addPoint3D(const Point3D& point3D);
     Node findCameraById(int id);
     Node getNode(int index) const;
+    std::vector<int> getCameraIds();
 
     void updateAdjusted3DPointPoses(std::vector<Vertex> &points3D);
     void updateAdjustedIntrinsicParams(Eigen::Matrix<double, 4, 1> &intrinsics);

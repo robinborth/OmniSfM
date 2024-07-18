@@ -11,7 +11,6 @@ public:
     SfMInitializer(ImageStorage &imageStorage, SfMGraph &graph);
 
     std::vector<Eigen::Vector4f> vertex2Camera(size_t imgIdx, std::vector<Vertex> points3D);
-    void runSfM(ImagePairMatches &allMatches);
     const std::vector<Vertex> &getPoints3D() const;
     void solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> points2D, std::vector<Eigen::Vector4f> points3D);
     cv::Mat getIntrinsic();
@@ -19,6 +18,7 @@ public:
     const std::vector<Eigen::Matrix4f> getCameraPoses() const;
     Eigen::Matrix4f combineRotationAndTranslationIntoMatrix(const cv::Mat &R, const cv::Mat &t);
     void twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2);
+    void multiViewSfm(const ImagePairMatches &allMatches, int newImageId);
     void addSfM(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2);
 
 private:
@@ -30,7 +30,7 @@ private:
                                                    const cv::Mat &P1,
                                                    const cv::Mat &P2);
     std::tuple<std::vector<cv::Point2f>, std::vector<cv::Point2f>, std::vector<cv::Vec3b>, std::vector<cv::Vec3b>> extractMatchedPoints(const std::vector<cv::DMatch> &matches, size_t idx1, size_t idx2);
-    bool refineCameraPoseWithPnP(const std::vector<Vertex> &objectPoints,
+    bool refineCameraPoseWithPnP(const std::vector<cv::Point3f> &objectPoints,
                                  const std::vector<cv::Point2f> &imagePoints,
                                  size_t cameraId,
                                  cv::Mat &R,

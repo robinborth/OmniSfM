@@ -89,7 +89,7 @@ std::vector<Vertex> SfMInitializer::triangulatePointsWithColor(const std::vector
     return vertices;
 }
 
-bool SfMInitializer::refineCameraPoseWithPnP(const std::vector<Vertex> &objectPoints,
+bool SfMInitializer::refineCameraPoseWithPnP(const std::vector<cv::Point3f> &objectPointsCv,
                                              const std::vector<cv::Point2f> &imagePoints,
                                              size_t cameraId,
                                              cv::Mat &R,
@@ -100,7 +100,7 @@ bool SfMInitializer::refineCameraPoseWithPnP(const std::vector<Vertex> &objectPo
     cv::eigen2cv(this->imageStorage.getIntrinsics(), k);
 
     // Execute the solvePnP function to refine the pose
-    std::vector<cv::Point3f> objectPointsCv = convertVerticesToCvPoint3f(objectPoints);
+    //std::vector<cv::Point3f> objectPointsCv = convertVerticesToCvPoint3f(objectPoints);
     bool success = cv::solvePnP(objectPointsCv, imagePoints, k, cv::noArray(), rvec, t, false, cv::SOLVEPNP_ITERATIVE);
     if (success)
     {
@@ -130,7 +130,7 @@ std::tuple<std::vector<cv::Point2f>, std::vector<cv::Point2f>, std::vector<cv::V
 {
     std::vector<cv::Point2f> pts1, pts2;
     std::vector<cv::Vec3b> colors1, colors2;
-    std::cout << "Extracting Matched Points for id " << idx1 << " and id " << idx2 << std::endl;
+    //std::cout << "Extracting Matched Points for id " << idx1 << " and id " << idx2 << std::endl;
     Image *img1 = imageStorage.findImage(idx1);
     Image *img2 = imageStorage.findImage(idx2);
     if (!img1 || !img2)
@@ -227,71 +227,19 @@ void SfMInitializer::solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> poin
     std::cout << "w: " << w << " q: " << q << std::endl;
 }
 
-void SfMInitializer::runSfM(ImagePairMatches &allMatches)
-{
-    if (allMatches.empty())
-    {
-        std::cout << "No matches to process." << std::endl;
-        return;
-    }
-
-    // First 2 images estimate the Pose between them!
-    const auto &pair = allMatches.begin()->first;
-    const auto &matches = allMatches.begin()->second;
-    imageStorage.updatePose(pair.first, Eigen::Matrix4f::Identity()); // world2camera
-    std::cout << pair.first << " " << pair.second << " " << matches.size() << std::endl;
-    if (matches.size() < 60)
-    {
-        std::cout << "Not enough matches for image pair (" << pair.first << ", " << pair.second << ")." << std::endl;
-        return;
-    }
-    auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matches, pair.first, pair.second);
-
-    std::vector<Vertex> points3D;
-    cv::Mat R, t;
-    if (estimateInitialPose(pts1, pts2, R, t)) // from pts1 -> pts2 (note that pts1 is world for first frame)
-    {
-        imageStorage.updatePose(pair.second, combineRotationAndTranslationIntoMatrix(R, t));
-        Image *img1 = imageStorage.findImage(pair.first);
-        Image *img2 = imageStorage.findImage(pair.second);
-        if (!img1 || !img2)
-        {
-            std::cerr << "Image not found." << std::endl;
-            return;
-        }
-        auto P1 = world2Image(*img1);
-        auto P2 = world2Image(*img2);
-        points3D = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
-    }
-    else
-    {
-        std::cout << "Failed to estimate pose for image pair (" << pair.first << ", " << pair.second << ")." << std::endl;
-    }
-
-    std::cout << "Solve depth map for image: " << pair.first << std::endl;
-    auto c1 = vertex2Camera(pair.first, points3D);
-    solveDepthMaps(pair.first, pts1, c1);
-    std::cout << "Solve depth map for image: " << pair.second << std::endl;
-    auto c2 = vertex2Camera(pair.second, points3D);
-    solveDepthMaps(pair.second, pts2, c2);
-}
 
 void SfMInitializer::addSfM(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
 {
     Image *sourceImg = this->imageStorage.findImage(imgId1);
     Image *targetImg = this->imageStorage.findImage(imgId2);
+    if (!sourceImg || !targetImg)
+    {
+        std::cerr << "Error: Could not find images." << std::endl;
+        return;
+    }
 
     // imgId1 is assumed to be already in the graph structure
-    bool imgExists = false;
-    for (auto &c : graph.cams)
-    {
-        if (imgId1 == c.id)
-        {
-            imgExists = true;
-            break;
-        }
-    }
-    if (!imgExists)
+    if (!graph.isImageExist(imgId1))
     {
         std::cout << "ERROR: image is not integrated in graph id: " << imgId1 << std::endl;
     }
@@ -358,6 +306,7 @@ void SfMInitializer::updateGraph(const std::vector<Vertex> &points3D, const std:
     Node node2 = {(int)img2->id, img2->P, img2->keypoints, img2->K};
     int nodeIndex1 = graph.addNode(node1);
     int nodeIndex2 = graph.addNode(node2);
+    //std::cout << "Number of 3DPoints before update " << graph.getNumPoint3D() << std::endl;
 
     for (size_t i = 0; i < points3D.size(); ++i)
     {
@@ -371,6 +320,7 @@ void SfMInitializer::updateGraph(const std::vector<Vertex> &points3D, const std:
     // Add edge to the graph representing the matches between these two images
     Edge edge = {nodeIndex1, nodeIndex2, matches};
     graph.addEdge(edge);
+    //std::cout << "Number of 3DPoints after update " << graph.getNumPoint3D() << std::endl;
 }
 
 void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
@@ -420,6 +370,81 @@ void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, s
     // std::cout << "Solve depth map for image: " << imgId2 << std::endl;
     // auto c2 = vertex2Camera(imgId2, points3D);
     // solveDepthMaps(imgId2, pts2, c2);
+}
+
+
+void SfMInitializer::multiViewSfm(const ImagePairMatches &allMatches, int newImageId)
+{
+    Image *newImg = this->imageStorage.findImage(newImageId);
+    if (!newImg)
+    {
+        std::cerr << "Error: Could not find image." << std::endl;
+        return;
+    }
+
+    std::vector<int> imgIds = this->graph.getCameraIds();
+    ImagePairMatches matchesForNewImg;
+    std::vector<cv::Point3f> objectPoints;  // To store 3D coordinates
+    std::vector<cv::Point2f> imagePoints; 
+
+    Image *sourceImg = NULL;
+
+    for (const auto &imgId : imgIds)
+    {
+        auto matches = allMatches.at(std::make_pair(imgId, newImageId));
+        // store those matches
+        matchesForNewImg[std::make_pair(imgId, newImageId)] = matches;
+    }
+
+    std::vector<std::vector<Vertex>> fullPoints3D; // hold keypoints that are not in the shared set
+    for (auto &matchList : matchesForNewImg)
+    {
+        sourceImg = this->imageStorage.findImage(matchList.first.first);
+        auto P1 = world2Image(*sourceImg);
+        auto P2 = world2Image(*newImg);
+        auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matchList.second, sourceImg->id, newImg->id);
+        std::vector<Vertex> temp3d;
+        temp3d = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
+        fullPoints3D.push_back(temp3d);
+        //std::cout << "Number of 3DPoints after update " << temp3d.size() << std::endl;
+        for (auto &match : matchList.second)
+        {
+            for (const auto &point3d : this->graph.point3DList)
+            {
+                auto it = std::find_if(point3d.observations.begin(), point3d.observations.end(), [&](const std::pair<int, int> &obs) {
+                    return obs.first == matchList.first.first && obs.second == match.queryIdx;
+                });
+                if (it != point3d.observations.end()) 
+                {
+                    // If found, add the 3D point and the corresponding 2D point in Image 2 to the lists
+                    objectPoints.push_back(cv::Point3f(point3d.position.x(), point3d.position.y(), point3d.position.z()));
+                    imagePoints.push_back(newImg->keypoints[match.trainIdx].pt);
+                }
+            }
+        }
+        
+    }
+
+    //std::cout << "==> Extracted " << objectPoints.size() << " points for pose estimation." << std::endl;
+
+    cv::Mat R, t; // this needs to be estimated
+    if (refineCameraPoseWithPnP(objectPoints, imagePoints, newImg->id, R, t))
+    {
+        std::cout << "PnP success for id: " << newImg->id << std::endl;
+        imageStorage.updatePose(newImg->id, combineRotationAndTranslationIntoMatrix(R, t));
+        poses.push_back(combineRotationAndTranslationIntoMatrix(R, t));
+    }
+    else
+    {
+        std::cout << "ERROR: PnP failed for id: " << newImg->id << std::endl;
+    }
+
+    for (size_t i = 0; i < fullPoints3D.size(); ++i)
+    {
+        //std::cout << "Number of 3DPoints before update " << graph.getNumPoint3D() << std::endl;
+        updateGraph(fullPoints3D[i], matchesForNewImg.at(std::make_pair(imgIds[i], newImageId)), sourceImg, newImg);
+        //std::cout << "Number of 3DPoints after update " << graph.getNumPoint3D() << std::endl;
+    }
 }
 
 const std::vector<Vertex> &SfMInitializer::getPoints3D() const { return points3D; }

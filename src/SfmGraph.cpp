@@ -42,6 +42,7 @@ void SfMGraph::addPoint3D(const Point3D &point3D)
                 if (observation.first == sharedObservation.first & observation.second == sharedObservation.second)
                 {
                     pointExist = true;
+                    break;
                 }
             }
         }
@@ -247,4 +248,14 @@ bool SfMGraph::isImageExist(int id) const
         }
     }
     return false;
+}
+
+std::vector<int> SfMGraph::getCameraIds()
+{
+    std::vector<int> ids;
+    for (const auto &cam : this->cams)
+    {
+        ids.push_back(cam.id);
+    }
+    return ids;
 }
