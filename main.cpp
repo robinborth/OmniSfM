@@ -27,7 +27,7 @@ int main()
     BundleAdjustment bundleAdjustment;
     std::cout << "==> Load images ..." << std::endl;
     imageStorage.loadImages();
-    imageStorage.useEveryNthImage(10); // current setting uses --n=51
+    imageStorage.useEveryNthImage(settings.useEveryNthImage);
     std::cout << imageStorage.getNumImages() << " images will be used." << std::endl;
 
     std::cout << "==> Detect keypoints ..." << std::endl;
@@ -40,6 +40,10 @@ int main()
     CorrespondenceSearch search;
 
     sourceImg = imageStorage.images[0];                   // initilize with the first image
+
+    auto allMatches = search.queryCorrespondences(imageStorage.images);
+
+    sourceImg = imageStorage.images[0];                   // initilize with the first image
     for (auto k = 1; k < imageStorage.images.size(); ++k) // iterate over all the images
     {
         // extract the next target image
@@ -50,6 +54,11 @@ int main()
         // searches for inliers between the current current image and the source
         auto matches = search.queryMatches(sourceImg, targetImg);
         auto inlierMatches = search.filterMatchesWithRANSAC(sourceImg, targetImg, matches);
+        if (inlierMatches.size() < 60)
+        {
+            std::cout << "Not enough inliers found. Skipping this pair." << std::endl;
+            continue;
+        }
 
         if (k == 1)
         {
@@ -64,50 +73,17 @@ int main()
 
         // debug the projections before
         debugProjection(targetImg, sfmGraph, "before");
-        std::cout << "Reprojection Error " << calculateReprojectionError(sourceImg, targetImg, sfmGraph) << std::endl;
+        std::cout << "Reprojection Error " << calculateOverallReprojectionError(sfmGraph, imageStorage) << std::endl;
         // run bundle adjustment
         std::cout << "==> Local Bundle Adjustment step (" << k << ") ..." << std::endl;
         bundleAdjustment.Adjust(sfmGraph);
         // debug the projections after
         debugProjection(targetImg, sfmGraph, "after");
-        std::cout << "Reprojection Error " << calculateReprojectionError(sourceImg, targetImg, sfmGraph) << std::endl;
+        std::cout << "Reprojection Error " << calculateOverallReprojectionError(sfmGraph, imageStorage) << std::endl;
     }
 
-    std::cout << "==> Visualize SfM ..." << std::endl;
-    Visualization sfmVis = Visualization("sfm");
-    std::vector<Vertex> points3D = sfm.getPoints3D();
-    // this is cheating but for visualization better
-    // we should remove outliers in SfM!
-    std::vector<Vertex> cleanPoints3D = cleanPointCloud(points3D);
-
-    auto cameraPoses = sfm.getCameraPoses();
-    sfmVis.addVertex(cleanPoints3D);
-    sfmVis.addCamera(cameraPoses, 0.0002);
-    sfmVis.writeAllMeshes();
-    for (size_t i = 0; i < cameraPoses.size(); ++i)
-    {
-        std::cout << "Camera Pose Before BA " << i + 1 << ":\n";
-        std::cout << cameraPoses[i] << "\n\n";
-    }
-
-    std::cout << "Reprojection Error " << calculateReprojectionError(sourceImg, targetImg, sfmGraph) << std::endl;
-
-    // std::cout << "==> Visualize MVS ..." << std::endl;
-    // Visualization mvsVis = Visualization("mvs");
-    // cameraPoses = sfm.getCameraPoses();
-    // mvsVis.addCamera(cameraPoses, 0.001);
-    // for (auto &img : imageStorage.images)
-    // {
-    //     std::cout << "Add image (" << img.id << ") to the visualiztion." << std::endl;
-    //     std::vector<Vertex> verticies = extractPointCloud(img);
-    //     mvsVis.addVertex(verticies);
-    // }
-    // std::vector<Vertex> verticies = extractPointCloud(*img0);
-    // mvsVis.addVertex(verticies);
-    // verticies = extractPointCloud(*img1);
-    // mvsVis.addVertex(verticies);
-
-    // mvsVis.writeAllMeshes();
+    std::cout << "==> Global Bundle Adjustment ..." << std::endl;
+    bundleAdjustment.Adjust(sfmGraph);
 
     return 0;
 }

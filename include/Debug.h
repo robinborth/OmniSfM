@@ -1,4 +1,6 @@
 #pragma once
+
+
 #include "Definitions.h"
 #include "SfmGraph.h"
 #include <opencv2/core/eigen.hpp>
@@ -7,7 +9,7 @@
 #include <vector>
 #include <map>
 
-void drawKeypoints_(const cv::Mat &image, const std::vector<cv::KeyPoint> &keypoints, const std::string &windowName)
+void draw(const cv::Mat &image, const std::vector<cv::KeyPoint> &keypoints, const std::string &windowName)
 {
     cv::Mat output;
     cv::drawKeypoints(image, keypoints, output, cv::Scalar::all(-1));
@@ -88,7 +90,7 @@ void projectAndDraw3DPointsAndKeypoints(
         {
             if (obs.first == image.id)
             {
-                std::cout << " 3d position: " << v.position << std::endl;
+                // std::cout << " 3d position: " << v.position << std::endl;
                 cv::circle(output, keypoints[obs.second].pt, 4, cv::Scalar(0, 255, 0), -1); // Green points for 2D
                 Eigen::Vector4f position = v.position;
                 Eigen::Vector2f projectedPoint2D = projectPoint3Dto2D(image.rgb, position, intrinsics, pose);
@@ -110,8 +112,8 @@ void debugProjectionfor2viewSfm(const Image &image1,
 
     projectAndDraw3DPointsAndKeypoints(image1, graph.point3DList, cam1.keypoints, edge1.matches, cam1.intrinsics, cam1.pose, "Camera_1_Projection");
     projectAndDraw3DPointsAndKeypoints(image2, graph.point3DList, cam2.keypoints, edge1.matches, cam2.intrinsics, cam2.pose, "Camera_2_Projection");
-    drawKeypoints_(image1.rgb, cam1.keypoints, "Camera_1_Keypoints");
-    drawKeypoints_(image2.rgb, cam2.keypoints, "Camera_2_Keypoints");
+    draw(image1.rgb, cam1.keypoints, "Camera_1_Keypoints");
+    draw(image2.rgb, cam2.keypoints, "Camera_2_Keypoints");
 }
 
 void debugProjection(const Image &img, SfMGraph &graph, std::string prefix)
@@ -133,7 +135,7 @@ void debugProjection(const Image &img, SfMGraph &graph, std::string prefix)
     std::string name = "camera_" + std::to_string(img.id) + "_projection_" + prefix;
     projectAndDraw3DPointsAndKeypoints(img, graph.point3DList, camera.keypoints, matches, camera.intrinsics, camera.pose, name);
     name = "Camera_" + std::to_string(img.id) + "_Keypoints_" + prefix;
-    drawKeypoints_(img.rgb, camera.keypoints, name);
+    draw(img.rgb, camera.keypoints, name);
 }
 
 float calculateReprojectionError(const Image &image1,
@@ -163,6 +165,25 @@ float calculateReprojectionError(const Image &image1,
                 totalError += cv::norm(projectedPointCv - cam2.keypoints[obs.second].pt);
                 count++;
             }
+        }
+    }
+    return totalError / count;
+}
+
+float calculateOverallReprojectionError(SfMGraph &graph, ImageStorage &imageStorage)
+{
+    float totalError = 0.0f;
+    int count = 0;
+    for (const auto &point3d : graph.point3DList)
+    {
+        for (const auto &obs : point3d.observations)
+        {
+            const auto &camera = graph.findCameraById(obs.first);
+            const auto &img = imageStorage.findImage(obs.first); // get the image by id
+            Eigen::Vector2f projectedPoint = projectPoint3Dto2D(img->rgb, point3d.position, img->K, camera.pose);
+            cv::Point2f projectedPointCv(projectedPoint[0], projectedPoint[1]);
+            totalError += cv::norm(projectedPointCv - camera.keypoints[obs.second].pt);
+            count++;
         }
     }
     return totalError / count;

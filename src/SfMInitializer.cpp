@@ -228,76 +228,89 @@ void SfMInitializer::solveDepthMaps(size_t imgIdx, std::vector<cv::Point2f> poin
 }
 
 
-void SfMInitializer::addSfM(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
+void SfMInitializer::multiViewSfm(const ImagePairMatches &allMatches, size_t newImgID, std::vector<int> &imgIDs)
 {
-    Image *sourceImg = this->imageStorage.findImage(imgId1);
-    Image *targetImg = this->imageStorage.findImage(imgId2);
-    if (!sourceImg || !targetImg)
+    Image *targetImg = this->imageStorage.findImage(newImgID);
+    Image *sourceImg;
+    if (!targetImg)
     {
         std::cerr << "Error: Could not find images." << std::endl;
         return;
     }
+    std::vector<std::vector<Vertex>> fullPoints3D;
+    auto P2 = world2Image(*targetImg);
+    cv::Mat P1;
 
-    // imgId1 is assumed to be already in the graph structure
-    if (!graph.isImageExist(imgId1))
-    {
-        std::cout << "ERROR: image is not integrated in graph id: " << imgId1 << std::endl;
-    }
 
     // Extract 3D points from graph of img1 that are shared with img2
-    std::vector<Vertex> objectPoints;
+    std::vector<cv::Point3f> objectPoints;
     std::vector<cv::Point2f> imagePoints;
-    for (auto &point3D : graph.point3DList)
+    for (auto &imgId1 : imgIDs) // go through all images
     {
-        for (auto &observation : point3D.observations)
-        {
-            // check if the point3D is from the image1 that is our reference to register image2
-            if (observation.first == imgId1) // the imageId of image1
+        try {
+            MatchList matchesForPair = allMatches.at(std::make_pair(imgId1, newImgID));
+            sourceImg = this->imageStorage.findImage(imgId1);
+            for (auto &point3D : graph.point3DList)
             {
-                for (const auto &match : matchesForPair) // go trough all matches and only add the ones that are registerd
+                for (auto &observation : point3D.observations)
                 {
-                    auto observationKeypointIdImg1 = observation.second; // the keypointId of image1
-                    auto keypointIdImg1 = match.queryIdx;                // the keypointId of image1
-                    auto keypointIdImg2 = match.trainIdx;
-                    if (observationKeypointIdImg1 == keypointIdImg1) // the keypoints for image1 are registerd we have a match for image2
+                    // check if the point3D is from the image1 that is our reference to register image2
+                    if (observation.first == imgId1) // the imageId of image1
                     {
-                        // the keypointId of image2
-                        cv::Point2f pt2 = targetImg->keypoints[keypointIdImg2].pt; // get the 2d point from the image to add
-                        imagePoints.push_back(pt2);
-                        auto vertex = Vertex{point3D.position, point3D.color};
-                        objectPoints.push_back(vertex);
+                        for (const auto &match : matchesForPair) // go trough all matches and only add the ones that are registerd
+                        {
+                            auto observationKeypointIdImg1 = observation.second; // the keypointId of image1
+                            auto keypointIdImg1 = match.queryIdx;                // the keypointId of image1
+                            auto keypointIdImg2 = match.trainIdx;
+                            if (observationKeypointIdImg1 == keypointIdImg1) // the keypoints for image1 are registerd we have a match for image2
+                            {
+                                // the keypointId of image2
+                                cv::Point2f pt2 = targetImg->keypoints[keypointIdImg2].pt; // get the 2d point from the image to add
+                                imagePoints.push_back(pt2);
+                                objectPoints.push_back(cv::Point3f(point3D.position.x(), point3D.position.y(), point3D.position.z()));
+                            }
+                        }
                     }
                 }
             }
+            P1 = world2Image(*sourceImg);
+            auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matchesForPair, imgId1, newImgID);
+            fullPoints3D.push_back(triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2));
+            // Use matches here
+        } catch (const std::out_of_range& e) {
+            std::cerr << "No matches found for the provided image IDs: " << imgId1 << " and " << newImgID << std::endl;
+            continue;
         }
+
     }
 
     // extract new camera pose for image2
     cv::Mat R, t; // this needs to be estimated
-    if (refineCameraPoseWithPnP(objectPoints, imagePoints, imgId2, R, t))
+    if (refineCameraPoseWithPnP(objectPoints, imagePoints, newImgID, R, t))
     {
-        std::cout << "PnP success for id: " << imgId2 << std::endl;
-        imageStorage.updatePose(imgId2, combineRotationAndTranslationIntoMatrix(R, t));
+        std::cout << "PnP success for id: " << newImgID << std::endl;
+        imageStorage.updatePose(newImgID, combineRotationAndTranslationIntoMatrix(R, t));
         poses.push_back(combineRotationAndTranslationIntoMatrix(R, t));
     }
     else
     {
-        std::cout << "ERROR: PnP failed for id: " << imgId2 << std::endl;
+        std::cout << "ERROR: PnP failed for id: " << newImgID << std::endl;
     }
 
-    // after estimation of the pose for the added image we need to insert all the points
-    // which has a match between image1 and image2 this can be more then the one that are
-    // in the shared set (e.g. we need this to add more points to the current pointcloud)
-    std::vector<Vertex> fullPoints3D; // hold keypoints that are not in the shared set
-    auto P1 = world2Image(*sourceImg);
-    auto P2 = world2Image(*targetImg);
-    auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matchesForPair, imgId1, imgId2);
-    fullPoints3D = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
-    // note that in update graph we call addPoint3D, which checks if the point allready is
-    // in the shared point cloud, if so we just add the observation (keypoint) for the second
-    // image, and don't add a new point, if the point however is new we add the point to the
-    // pointcloud.
-    updateGraph(fullPoints3D, matchesForPair, sourceImg, targetImg);
+    int i = 0;
+    for (auto &imgId: imgIDs)
+    {
+        try 
+        {
+            auto matchesForPair = allMatches.at(std::make_pair(imgId, newImgID));
+            updateGraph(fullPoints3D[i], matchesForPair, this->imageStorage.findImage(imgId), targetImg);
+            i++;
+
+        } catch (const std::out_of_range& e) {
+            std::cerr << "No matches found for the provided image IDs: " << imgId << " and " << newImgID << std::endl;
+            continue;
+        }
+    }
 }
 
 void SfMInitializer::updateGraph(const std::vector<Vertex> &points3D, const std::vector<cv::DMatch> &matches, Image *img1, Image *img2)
@@ -362,89 +375,83 @@ void SfMInitializer::twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, s
     {
         std::cout << "Failed to estimate pose for image pair (" << imgId1 << ", " << imgId2 << ")." << std::endl;
     }
-
-    // TODO add again
-    // std::cout << "Solve depth map for image: " << imgId1 << std::endl;
-    // auto c1 = vertex2Camera(imgId1, points3D);
-    // solveDepthMaps(imgId1, pts1, c1);
-    // std::cout << "Solve depth map for image: " << imgId2 << std::endl;
-    // auto c2 = vertex2Camera(imgId2, points3D);
-    // solveDepthMaps(imgId2, pts2, c2);
 }
 
 
-void SfMInitializer::multiViewSfm(const ImagePairMatches &allMatches, int newImageId)
+void SfMInitializer::addSfM(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2)
 {
-    Image *newImg = this->imageStorage.findImage(newImageId);
-    if (!newImg)
+    Image *sourceImg = this->imageStorage.findImage(imgId1);
+    Image *targetImg = this->imageStorage.findImage(imgId2);
+
+    // imgId1 is assumed to be already in the graph structure
+    bool imgExists = false;
+    for (auto &c : graph.cams)
     {
-        std::cerr << "Error: Could not find image." << std::endl;
+        if (imgId1 == c.id)
+        {
+            imgExists = true;
+            break;
+        }
+    }
+    if (!imgExists)
+    {
+        std::cout << "ERROR: image is not integrated in graph id: " << imgId1 << std::endl;
         return;
     }
 
-    std::vector<int> imgIds = this->graph.getCameraIds();
-    ImagePairMatches matchesForNewImg;
-    std::vector<cv::Point3f> objectPoints;  // To store 3D coordinates
-    std::vector<cv::Point2f> imagePoints; 
-
-    Image *sourceImg = NULL;
-
-    for (const auto &imgId : imgIds)
+    // Extract 3D points from graph of img1 that are shared with img2
+    std::vector<cv::Point3f> objectPoints;
+    std::vector<cv::Point2f> imagePoints;
+    for (auto &point3D : graph.point3DList)
     {
-        auto matches = allMatches.at(std::make_pair(imgId, newImageId));
-        // store those matches
-        matchesForNewImg[std::make_pair(imgId, newImageId)] = matches;
-    }
-
-    std::vector<std::vector<Vertex>> fullPoints3D; // hold keypoints that are not in the shared set
-    for (auto &matchList : matchesForNewImg)
-    {
-        sourceImg = this->imageStorage.findImage(matchList.first.first);
-        auto P1 = world2Image(*sourceImg);
-        auto P2 = world2Image(*newImg);
-        auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matchList.second, sourceImg->id, newImg->id);
-        std::vector<Vertex> temp3d;
-        temp3d = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
-        fullPoints3D.push_back(temp3d);
-        //std::cout << "Number of 3DPoints after update " << temp3d.size() << std::endl;
-        for (auto &match : matchList.second)
+        for (auto &observation : point3D.observations)
         {
-            for (const auto &point3d : this->graph.point3DList)
+            // check if the point3D is from the image1 that is our reference to register image2
+            if (observation.first == imgId1) // the imageId of image1
             {
-                auto it = std::find_if(point3d.observations.begin(), point3d.observations.end(), [&](const std::pair<int, int> &obs) {
-                    return obs.first == matchList.first.first && obs.second == match.queryIdx;
-                });
-                if (it != point3d.observations.end()) 
+                for (const auto &match : matchesForPair) // go trough all matches and only add the ones that are registerd
                 {
-                    // If found, add the 3D point and the corresponding 2D point in Image 2 to the lists
-                    objectPoints.push_back(cv::Point3f(point3d.position.x(), point3d.position.y(), point3d.position.z()));
-                    imagePoints.push_back(newImg->keypoints[match.trainIdx].pt);
+                    auto observationKeypointIdImg1 = observation.second; // the keypointId of image1
+                    auto keypointIdImg1 = match.queryIdx;                // the keypointId of image1
+                    auto keypointIdImg2 = match.trainIdx;
+                    if (observationKeypointIdImg1 == keypointIdImg1) // the keypoints for image1 are registerd we have a match for image2
+                    {
+                        // the keypointId of image2
+                        cv::Point2f pt2 = targetImg->keypoints[keypointIdImg2].pt; // get the 2d point from the image to add
+                        imagePoints.push_back(pt2);
+                        objectPoints.push_back(cv::Point3f(point3D.position.x(), point3D.position.y(), point3D.position.z()));
+                    }
                 }
             }
         }
-        
     }
 
-    //std::cout << "==> Extracted " << objectPoints.size() << " points for pose estimation." << std::endl;
-
+    // extract new camera pose for image2
     cv::Mat R, t; // this needs to be estimated
-    if (refineCameraPoseWithPnP(objectPoints, imagePoints, newImg->id, R, t))
+    if (refineCameraPoseWithPnP(objectPoints, imagePoints, imgId2, R, t))
     {
-        std::cout << "PnP success for id: " << newImg->id << std::endl;
-        imageStorage.updatePose(newImg->id, combineRotationAndTranslationIntoMatrix(R, t));
+        std::cout << "PnP success for id: " << imgId2 << std::endl;
+        imageStorage.updatePose(imgId2, combineRotationAndTranslationIntoMatrix(R, t));
         poses.push_back(combineRotationAndTranslationIntoMatrix(R, t));
     }
     else
     {
-        std::cout << "ERROR: PnP failed for id: " << newImg->id << std::endl;
+        std::cout << "ERROR: PnP failed for id: " << imgId2 << std::endl;
     }
 
-    for (size_t i = 0; i < fullPoints3D.size(); ++i)
-    {
-        //std::cout << "Number of 3DPoints before update " << graph.getNumPoint3D() << std::endl;
-        updateGraph(fullPoints3D[i], matchesForNewImg.at(std::make_pair(imgIds[i], newImageId)), sourceImg, newImg);
-        //std::cout << "Number of 3DPoints after update " << graph.getNumPoint3D() << std::endl;
-    }
+    // after estimation of the pose for the added image we need to insert all the points
+    // which has a match between image1 and image2 this can be more then the one that are
+    // in the shared set (e.g. we need this to add more points to the current pointcloud)
+    std::vector<Vertex> fullPoints3D; // hold keypoints that are not in the shared set
+    auto P1 = world2Image(*sourceImg);
+    auto P2 = world2Image(*targetImg);
+    auto [pts1, pts2, colors1, colors2] = extractMatchedPoints(matchesForPair, imgId1, imgId2);
+    fullPoints3D = triangulatePointsWithColor(pts1, pts2, colors1, colors2, P1, P2);
+    // note that in update graph we call addPoint3D, which checks if the point allready is
+    // in the shared point cloud, if so we just add the observation (keypoint) for the second
+    // image, and don't add a new point, if the point however is new we add the point to the
+    // pointcloud.
+    updateGraph(fullPoints3D, matchesForPair, sourceImg, targetImg);
 }
 
 const std::vector<Vertex> &SfMInitializer::getPoints3D() const { return points3D; }

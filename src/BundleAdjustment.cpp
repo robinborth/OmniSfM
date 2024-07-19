@@ -9,7 +9,7 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
     std::map<int, Eigen::Matrix<double, 6, 1>> extrinsics = graph.extractAllExtrinsics();
     std::vector<Eigen::Matrix<double, 3, 1>> point3ds = graph.extractAllPoint3d(); // ensure no duplicates
     //ceres::LossFunction *loss_function = new ceres::HuberLoss(1.0);
-    ceres::LossFunction *loss_function = new ceres::CauchyLoss(1.0);
+    //ceres::LossFunction *loss_function = new ceres::CauchyLoss(1.0);
 
     for (size_t j = 0; j < graph.point3DList.size(); j++)
     {
@@ -22,7 +22,7 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
             double observed_y = cam.keypoints[observation.second].pt.y;
             ceres::CostFunction *cost_function = CreateCostFunction(observed_x, observed_y);
             // std::cout << "############################################################" << std::endl;
-            problem.AddResidualBlock(cost_function, loss_function, intrinsicsArr.data(), extrinsics[nodeIdx].data(), point3ds[j].data());
+            problem.AddResidualBlock(cost_function, NULL, intrinsicsArr.data(), extrinsics[nodeIdx].data(), point3ds[j].data());
 
             problem.SetParameterBlockConstant(intrinsicsArr.data());
         }
@@ -36,9 +36,9 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
     options.minimizer_progress_to_stdout = true;
 
     options.use_nonmonotonic_steps = false;
-    options.function_tolerance = 1e-6;
+    options.function_tolerance = 1e-10;
     options.max_trust_region_radius =10000;
-    options.min_trust_region_radius = 1e-3;
+    options.min_trust_region_radius = 1e-2;
     ceres::Solver::Summary summary;
     std::cout << "Solving..." << std::endl;
     ceres::Solve(options, &problem, &summary);
@@ -54,7 +54,6 @@ void BundleAdjustment::Adjust(SfMGraph &graph)
     //graph.updateAdjustedIntrinsicParams(intrinsicsArr);
     graph.updateAdjustedExtrinsicParams(cameraPoses);
 
-    std::cout << intrinsicsArr(0) << " " << intrinsicsArr(1) << " " << intrinsicsArr(2) << " " << intrinsicsArr(3) << std::endl;
 
     for (size_t i = 0; i < cameraPoses.size(); ++i)
     {

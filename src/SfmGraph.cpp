@@ -42,7 +42,6 @@ void SfMGraph::addPoint3D(const Point3D &point3D)
                 if (observation.first == sharedObservation.first & observation.second == sharedObservation.second)
                 {
                     pointExist = true;
-                    break;
                 }
             }
         }

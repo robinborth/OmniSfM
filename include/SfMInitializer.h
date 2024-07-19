@@ -18,8 +18,8 @@ public:
     const std::vector<Eigen::Matrix4f> getCameraPoses() const;
     Eigen::Matrix4f combineRotationAndTranslationIntoMatrix(const cv::Mat &R, const cv::Mat &t);
     void twoViewSfm(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2);
-    void multiViewSfm(const ImagePairMatches &allMatches, int newImageId);
     void addSfM(const std::vector<cv::DMatch> &matchesForPair, size_t imgId1, size_t imgId2);
+    void multiViewSfm(const ImagePairMatches &allMatches, size_t newImgID, std::vector<int> &imgIDs);
 
 private:
     bool estimateInitialPose(const std::vector<cv::Point2f> &pts1, const std::vector<cv::Point2f> &pts2, cv::Mat &R, cv::Mat &t);
